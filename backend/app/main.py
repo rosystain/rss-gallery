@@ -26,7 +26,8 @@ app.add_middleware(
 )
 
 # Static files
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+DATA_DIR = os.getenv("DATA_DIR", "./data")
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -579,6 +580,10 @@ def get_item(item_id: str, db: Session = Depends(get_db)):
             "category": item.feed.category,
         } if item.feed else None,
     )
+
+
+# Serve frontend static files
+app.mount("/", StaticFiles(directory="/app/frontend/dist", html=True), name="frontend")
 
 
 if __name__ == "__main__":

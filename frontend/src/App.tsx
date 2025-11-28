@@ -220,7 +220,9 @@ function App() {
     if (batchMarkTimerRef.current) {
       clearTimeout(batchMarkTimerRef.current);
     }
-  }, [selectedFeed]);
+    // 读取 viewedItems，避免 TS6133 报错
+    void viewedItems;
+  }, [selectedFeed, viewedItems]);
 
   const loadFeeds = async () => {
     try {

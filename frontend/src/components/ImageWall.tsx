@@ -151,7 +151,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
           <div className="relative bg-gray-200 overflow-hidden">
             {item.thumbnailImage ? (
               <img
-                src={`http://localhost:3001${item.thumbnailImage}`}
+                src={item.thumbnailImage}
                 alt={item.title}
                 className="w-full h-auto max-h-[200%] object-contain group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"

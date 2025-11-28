@@ -10,7 +10,7 @@ import re
 from typing import Optional, Dict, Any
 
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+UPLOAD_DIR = os.path.join(os.getenv("DATA_DIR", "./data"), "uploads")
 THUMBNAIL_WIDTH = int(os.getenv("THUMBNAIL_WIDTH", "600"))
 THUMBNAIL_HEIGHT = int(os.getenv("THUMBNAIL_HEIGHT", "1200"))
 

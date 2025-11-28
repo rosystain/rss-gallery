@@ -1,0 +1,34 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# SQLite
+*.db
+*.sqlite3
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# Mac
+.DS_Store
+
+# Frontend build
+frontend/build/
+frontend/.next/
+frontend/.cache/
+
+# Docker
+*.pid
+
+# Others
+uploads/

@@ -1,0 +1,136 @@
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
+import type { FeedItem } from '../types';
+
+interface ItemModalProps {
+  item: FeedItem | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
+  if (!item) return null;
+
+  const categories = item.categories ? JSON.parse(item.categories) : [];
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-75" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-7xl mx-4 transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+                {/* Content */}
+                <div className="p-6 max-h-[80vh] overflow-y-auto">
+                  {/* Close Button */}
+                  <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2 transition shadow-md"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Title */}
+                  <Dialog.Title className="text-2xl font-bold text-gray-900 mb-4">
+                    {item.title}
+                  </Dialog.Title>
+
+                  {/* Meta Info */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6 pb-4 border-b">
+                    {item.author && (
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        <span>{item.author}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                      </svg>
+                      <span>{new Date(item.publishedAt).toLocaleDateString('zh-CN')}</span>
+                    </div>
+                    {item.feed && (
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                        </svg>
+                        <span>{item.feed.title}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Categories */}
+                  {categories.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {categories.map((cat: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                        >
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  <div
+                    className="prose prose-sm max-w-none text-gray-700 mb-6"
+                    dangerouslySetInnerHTML={{ __html: item.content || item.description || '' }}
+                  />
+
+                  {/* View Original Link */}
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <span>查看原文</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}

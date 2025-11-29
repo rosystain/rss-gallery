@@ -95,17 +95,22 @@ def process_content_images(content: str) -> str:
 
 
 def download_and_process_image(image_url: str) -> Optional[str]:
-    """Download image from URL, process it, and save locally"""
+    """Download image from URL, process it, and save locally with caching"""
     try:
-        response = requests.get(image_url, timeout=10)
-        response.raise_for_status()
-        
-        img = Image.open(BytesIO(response.content))
-        
         # Generate filename
         url_hash = hashlib.md5(image_url.encode()).hexdigest()
         filename = f"{url_hash}.webp"
         filepath = os.path.join(UPLOAD_DIR, filename)
+        
+        # Check if cached file exists
+        if os.path.exists(filepath):
+            return f"/uploads/{filename}"
+        
+        # Download and process only if not cached
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        img = Image.open(BytesIO(response.content))
         
         # Convert to RGB if necessary
         if img.mode in ('RGBA', 'LA', 'P'):

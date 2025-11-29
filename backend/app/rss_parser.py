@@ -92,6 +92,20 @@ def process_content_images(content: str) -> str:
     # Replace all img src attributes
     processed_content = re.sub(r'<img[^>]*>', replace_img_src, content, flags=re.IGNORECASE)
     return processed_content
+
+
+def download_and_process_image(image_url: str) -> Optional[str]:
+    """Download image from URL, process it, and save locally"""
+    try:
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        img = Image.open(BytesIO(response.content))
+        
+        # Generate filename
+        url_hash = hashlib.md5(image_url.encode()).hexdigest()
+        filename = f"{url_hash}.webp"
+        filepath = os.path.join(UPLOAD_DIR, filename)
         
         # Convert to RGB if necessary
         if img.mode in ('RGBA', 'LA', 'P'):

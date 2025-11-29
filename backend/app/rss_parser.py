@@ -71,32 +71,27 @@ def get_cover_image(entry: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def download_and_process_image(image_url: str) -> Optional[str]:
-    """Download image and create thumbnail"""
-    try:
-        if not is_valid_url(image_url):
-            return None
-        
-        # Generate unique filename
-        url_hash = hashlib.md5(image_url.encode()).hexdigest()
-        filename = f"{url_hash}.webp"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        
-        # Check if already exists
-        if os.path.exists(filepath):
-            return f"/uploads/{filename}"
-        
-        # Download image with headers to bypass anti-hotlinking
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-            'Referer': urlparse(image_url).scheme + '://' + urlparse(image_url).netloc
-        }
-        
-        response = requests.get(image_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        # Process image
-        img = Image.open(BytesIO(response.content))
+def process_content_images(content: str) -> str:
+    """Download and replace image URLs in HTML content with local paths"""
+    if not content:
+        return content
+    
+    import re
+    
+    def replace_img_src(match):
+        img_tag = match.group(0)
+        src_match = re.search(r'src=["\']([^"\']+)["\']', img_tag, re.IGNORECASE)
+        if src_match:
+            image_url = src_match.group(1)
+            if is_valid_url(image_url):
+                local_path = download_and_process_image(image_url)
+                if local_path:
+                    return img_tag.replace(src_match.group(0), f'src="{local_path}"')
+        return img_tag
+    
+    # Replace all img src attributes
+    processed_content = re.sub(r'<img[^>]*>', replace_img_src, content, flags=re.IGNORECASE)
+    return processed_content
         
         # Convert to RGB if necessary
         if img.mode in ('RGBA', 'LA', 'P'):
@@ -156,6 +151,9 @@ def parse_rss_feed(feed_url: str) -> Dict[str, Any]:
             content = entry.content[0].value if entry.content else ''
         elif hasattr(entry, 'summary'):
             content = entry.summary
+        
+        # Process images in content
+        content = process_content_images(content)
         
         # Extract categories
         categories = []

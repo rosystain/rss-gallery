@@ -1,7 +1,7 @@
 import feedparser
 import requests
 from urllib.parse import urljoin, urlparse
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 from io import BytesIO
 import os
@@ -133,7 +133,7 @@ def parse_rss_feed(feed_url: str) -> Dict[str, Any]:
     }
     
     entries = []
-    for entry in feed.entries:
+    for i, entry in enumerate(feed.entries):
         # Parse published date
         published_at = None
         if hasattr(entry, 'published_parsed') and entry.published_parsed:
@@ -141,7 +141,9 @@ def parse_rss_feed(feed_url: str) -> Dict[str, Any]:
         elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
             published_at = datetime(*entry.updated_parsed[:6])
         else:
-            published_at = datetime.utcnow()
+            # For entries without pubDate, use current time plus (total - index) to preserve feed order
+            # First entries get latest timestamps so they appear first in desc sort
+            published_at = datetime.utcnow() + timedelta(seconds=len(feed.entries) - i)
         
         # Extract author
         author = None

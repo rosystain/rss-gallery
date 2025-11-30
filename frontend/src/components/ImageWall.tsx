@@ -75,6 +75,9 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       observerRef.current.disconnect();
     }
 
+    // 清空之前的可见状态
+    fullyVisibleItemsRef.current.clear();
+
     // 创建 Intersection Observer
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -125,19 +128,11 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     };
   }, [items, onItemViewed]);
 
-  // 当items改变时（翻页），标记当前完全可见的items为已浏览
+  // 当切换 feed 时重置浏览记录
   useEffect(() => {
-    if (onItemViewed && fullyVisibleItemsRef.current.size > 0) {
-      const currentVisible = Array.from(fullyVisibleItemsRef.current);
-      currentVisible.forEach(itemId => {
-        if (!viewedItemsRef.current.has(itemId)) {
-          console.log('Marking visible item on page change:', itemId);
-          onItemViewed(itemId);
-        }
-      });
-    }
-  }, [items, onItemViewed]);
-  // Column configurations based on width slider (1-10)
+    viewedItemsRef.current.clear();
+    fullyVisibleItemsRef.current.clear();
+  }, [items.length > 0 ? items[0]?.feedId : null]);
   // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
   const breakpointColumns = {
     default: columnsCount,

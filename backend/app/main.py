@@ -582,8 +582,9 @@ def get_item(item_id: str, db: Session = Depends(get_db)):
     )
 
 
-# Serve frontend static files
-app.mount("/", StaticFiles(directory="/app/frontend/dist", html=True), name="frontend")
+# Serve frontend static files (only in production/Docker)
+if os.path.exists("/app/frontend/dist"):
+    app.mount("/", StaticFiles(directory="/app/frontend/dist", html=True), name="frontend")
 
 
 if __name__ == "__main__":

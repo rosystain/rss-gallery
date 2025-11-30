@@ -52,12 +52,20 @@ interface ImageWallProps {
   onItemClick: (item: FeedItem) => void;
   columnsCount?: number;
   onItemViewed?: (itemId: string) => void; // 当卡片完整浏览后的回调
+  viewedItems?: Set<string>; // 从外部传入的已浏览项目集合
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed }: ImageWallProps) {
-  const viewedItemsRef = useRef<Set<string>>(new Set()); // 追踪已浏览的卡片
+export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems }: ImageWallProps) {
   const fullyVisibleItemsRef = useRef<Set<string>>(new Set()); // 追踪当前完全可见的卡片
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // 使用外部的viewedItems，如果没有则使用内部的
+  const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
+  useEffect(() => {
+    if (viewedItems) {
+      viewedItemsRef.current = viewedItems;
+    }
+  }, [viewedItems]);
 
   useEffect(() => {
     if (!onItemViewed) return;
@@ -94,7 +102,6 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
               fullyVisibleItemsRef.current.delete(itemId);
               
               if (!viewedItemsRef.current.has(itemId)) {
-                viewedItemsRef.current.add(itemId);
                 console.log('Marking item as viewed:', itemId);
                 onItemViewed(itemId);
               }
@@ -118,11 +125,18 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     };
   }, [items, onItemViewed]);
 
-  // 当切换 feed 时重置浏览记录
+  // 当items改变时（翻页），标记当前完全可见的items为已浏览
   useEffect(() => {
-    viewedItemsRef.current.clear();
-    fullyVisibleItemsRef.current.clear();
-  }, [items.length > 0 ? items[0]?.feedId : null]);
+    if (onItemViewed && fullyVisibleItemsRef.current.size > 0) {
+      const currentVisible = Array.from(fullyVisibleItemsRef.current);
+      currentVisible.forEach(itemId => {
+        if (!viewedItemsRef.current.has(itemId)) {
+          console.log('Marking visible item on page change:', itemId);
+          onItemViewed(itemId);
+        }
+      });
+    }
+  }, [items, onItemViewed]);
   // Column configurations based on width slider (1-10)
   // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
   const breakpointColumns = {

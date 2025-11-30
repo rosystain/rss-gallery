@@ -220,9 +220,7 @@ function App() {
     if (batchMarkTimerRef.current) {
       clearTimeout(batchMarkTimerRef.current);
     }
-    // 读取 viewedItems，避免 TS6133 报错
-    void viewedItems;
-  }, [selectedFeed, viewedItems]);
+  }, [selectedFeed]);
 
   const loadFeeds = async () => {
     try {
@@ -872,6 +870,7 @@ function App() {
                 onItemClick={handleItemClick} 
                 columnsCount={getCurrentImageWidth()}
                 onItemViewed={handleItemViewed}
+                viewedItems={viewedItems}
               />
               
               {/* Load More Button */}

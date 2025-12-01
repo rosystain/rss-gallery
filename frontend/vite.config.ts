@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true, // 监听所有网络接口，允许远程访问
     proxy: {
       '/api': 'http://localhost:3001',
       '/uploads': 'http://localhost:3001'

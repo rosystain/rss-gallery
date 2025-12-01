@@ -35,6 +35,7 @@ function App() {
   const [editFeedTitle, setEditFeedTitle] = useState('');
   const [viewedItems, setViewedItems] = useState<Set<string>>(new Set()); // 追踪已浏览的 items
   const batchMarkTimerRef = useRef<NodeJS.Timeout | null>(null); // 批量标记定时器
+  const pendingMarkItemsRef = useRef<Set<string>>(new Set()); // 追踪待标记的项目（用于避免闭包问题）
   const [feedUnreadFilters, setFeedUnreadFilters] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('feedUnreadFilters');
     return saved ? JSON.parse(saved) : {};
@@ -52,6 +53,7 @@ function App() {
     return (saved as 'published' | 'created') || 'published';
   });
   const loadMoreButtonRef = useRef<HTMLDivElement>(null);
+  const fetchVersionRef = useRef(0); // 用于追踪请求版本，避免竞态条件
 
   // Save sidebar state to localStorage
   useEffect(() => {
@@ -62,11 +64,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('autoLoadMore', String(autoLoadMore));
   }, [autoLoadMore]);
-
-  // Save items per page preference to localStorage
-  useEffect(() => {
-    localStorage.setItem('itemsPerPage', String(itemsPerPage));
-  }, [itemsPerPage]);
 
   // Save items per page preference to localStorage
   useEffect(() => {
@@ -133,28 +130,62 @@ function App() {
 
   // Load items
   useEffect(() => {
-    const fetchItems = async (silent = false) => {
+    // 增加版本号
+    fetchVersionRef.current += 1;
+    const currentVersion = fetchVersionRef.current;
+    
+    const fetchItems = async (silent = false, isRefresh = false) => {
       try {
         if (!silent) {
           setIsLoading(true);
         }
         
         const currentUnreadFilter = getCurrentUnreadFilter();
+        // 静默刷新时只请求第一页
+        const requestPage = isRefresh ? 1 : page;
+        
         const response = await api.getItems({
-          page,
+          page: requestPage,
           limit: itemsPerPage,
           feedId: selectedFeed || undefined,
           unreadOnly: currentUnreadFilter,
           sortBy: sortBy,
         });
         
-        if (page === 1) {
-          setItems(response.items);
-        } else {
-          setItems(prev => [...prev, ...response.items]);
+        // 检查版本号，如果已过期则忽略响应
+        if (currentVersion !== fetchVersionRef.current) {
+          return;
         }
         
-        setHasMore(response.hasMore);
+        if (isRefresh) {
+          // 静默刷新：只更新现有数据中匹配的项目状态，不改变列表
+          setItems(prev => {
+            const newItemsMap = new Map(response.items.map(item => [item.id, item]));
+            let hasChanges = false;
+            const updated = prev.map(item => {
+              const newItem = newItemsMap.get(item.id);
+              // 如果新数据中有该项目，检查状态是否变化
+              if (newItem && newItem.isUnread !== item.isUnread) {
+                hasChanges = true;
+                return { ...item, isUnread: newItem.isUnread };
+              }
+              return item;
+            });
+            // 只有在有变化时才返回新数组，避免不必要的重新渲染
+            return hasChanges ? updated : prev;
+          });
+        } else if (page === 1) {
+          setItems(response.items);
+          setHasMore(response.hasMore);
+        } else {
+          // 翻页加载：去重后追加
+          setItems(prev => {
+            const existingIds = new Set(prev.map(item => item.id));
+            const newItems = response.items.filter(item => !existingIds.has(item.id));
+            return [...prev, ...newItems];
+          });
+          setHasMore(response.hasMore);
+        }
       } catch (error) {
         console.error('Failed to load items:', error);
       } finally {
@@ -168,7 +199,7 @@ function App() {
     
     // Auto refresh items every 30 seconds (silent mode to avoid flashing)
     const interval = setInterval(() => {
-      fetchItems(true); // Silent refresh
+      fetchItems(true, true); // Silent refresh, only update states
     }, 30000);
     
     return () => clearInterval(interval);
@@ -179,6 +210,9 @@ function App() {
     if (itemIds.length === 0) return;
 
     console.log(`准备标记 ${itemIds.length} 个浏览过的项目`);
+
+    // 清除已提交的项目
+    itemIds.forEach(id => pendingMarkItemsRef.current.delete(id));
 
     // 直接标记这些浏览过的 items
     api.markItemsAsRead(itemIds)
@@ -193,33 +227,52 @@ function App() {
       .catch(err => console.error('Failed to mark items as read:', err));
   };
 
+  // 立即提交所有待标记的项目
+  const flushPendingMarkItems = () => {
+    if (batchMarkTimerRef.current) {
+      clearTimeout(batchMarkTimerRef.current);
+      batchMarkTimerRef.current = null;
+    }
+    const pendingIds = Array.from(pendingMarkItemsRef.current);
+    if (pendingIds.length > 0) {
+      batchMarkItemsAsRead(pendingIds);
+    }
+    // 注意：不要清空 viewedItems，切换 feed 时会重置
+  };
+
   // 处理单个 item 被浏览完成
   const handleItemViewed = (itemId: string) => {
+    // 使用 ref 来追踪待标记项目，避免闭包问题
+    pendingMarkItemsRef.current.add(itemId);
+    
     setViewedItems(prev => {
       const newSet = new Set(prev);
       newSet.add(itemId);
-
-      // 清除之前的定时器
-      if (batchMarkTimerRef.current) {
-        clearTimeout(batchMarkTimerRef.current);
-      }
-
-      // 延迟 2 秒批量标记，避免频繁 API 调用
-      batchMarkTimerRef.current = setTimeout(() => {
-        batchMarkItemsAsRead(Array.from(newSet));
-        setViewedItems(new Set()); // 清空已标记的
-      }, 2000);
-
       return newSet;
     });
-  };
 
-  // 切换 feed 时重置浏览记录
-  useEffect(() => {
-    setViewedItems(new Set());
+    // 清除之前的定时器
     if (batchMarkTimerRef.current) {
       clearTimeout(batchMarkTimerRef.current);
     }
+
+    // 延迟 2 秒批量标记，避免频繁 API 调用
+    batchMarkTimerRef.current = setTimeout(() => {
+      const pendingIds = Array.from(pendingMarkItemsRef.current);
+      if (pendingIds.length > 0) {
+        batchMarkItemsAsRead(pendingIds);
+      }
+      // 注意：不要清空 viewedItems，否则会导致 ImageWall 重复检测
+    }, 2000);
+  };
+
+  // 切换 feed 时先提交待标记项目，再重置浏览记录
+  useEffect(() => {
+    // 先提交当前待标记的项目
+    flushPendingMarkItems();
+    // 重置所有记录（切换 feed 时可以安全清空）
+    pendingMarkItemsRef.current = new Set();
+    setViewedItems(new Set());
   }, [selectedFeed]);
 
   const loadFeeds = async () => {

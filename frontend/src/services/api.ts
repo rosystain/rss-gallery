@@ -2,11 +2,20 @@ import type { Feed, FeedItem, ItemsResponse } from '../types';
 
 const API_BASE = '/api';
 
+// 统一的响应处理
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`API Error (${response.status}): ${errorText}`);
+  }
+  return response.json();
+}
+
 export const api = {
   // Feeds
   async getFeeds(): Promise<Feed[]> {
     const response = await fetch(`${API_BASE}/feeds`);
-    return response.json();
+    return handleResponse<Feed[]>(response);
   },
 
   async createFeed(url: string, category?: string): Promise<Feed> {
@@ -15,13 +24,17 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, category }),
     });
-    return response.json();
+    return handleResponse<Feed>(response);
   },
 
   async deleteFeed(id: string): Promise<void> {
-    await fetch(`${API_BASE}/feeds/${id}`, {
+    const response = await fetch(`${API_BASE}/feeds/${id}`, {
       method: 'DELETE',
     });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
   },
 
   async updateFeed(id: string, data: { title?: string; url?: string; category?: string }): Promise<Feed> {
@@ -30,14 +43,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return response.json();
+    return handleResponse<Feed>(response);
   },
 
   async fetchFeed(id: string): Promise<{ success: boolean; newItems: number }> {
     const response = await fetch(`${API_BASE}/feeds/${id}/fetch`, {
       method: 'POST',
     });
-    return response.json();
+    return handleResponse<{ success: boolean; newItems: number }>(response);
   },
 
   async markFeedAsRead(id: string, latestItemTime?: string): Promise<{ success: boolean; lastViewedAt: string }> {
@@ -47,7 +60,7 @@ export const api = {
     const response = await fetch(url, {
       method: 'POST',
     });
-    return response.json();
+    return handleResponse<{ success: boolean; lastViewedAt: string }>(response);
   },
 
   async markItemsAsRead(itemIds: string[]): Promise<{ success: boolean; marked_count: number }> {
@@ -56,21 +69,21 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itemIds),
     });
-    return response.json();
+    return handleResponse<{ success: boolean; marked_count: number }>(response);
   },
 
   async markItemAsRead(itemId: string): Promise<{ success: boolean }> {
     const response = await fetch(`${API_BASE}/items/${itemId}/mark-read`, {
       method: 'POST',
     });
-    return response.json();
+    return handleResponse<{ success: boolean }>(response);
   },
 
   async markAllFeedAsRead(feedId: string): Promise<{ success: boolean; marked_count: number }> {
     const response = await fetch(`${API_BASE}/feeds/${feedId}/mark-all-read`, {
       method: 'POST',
     });
-    return response.json();
+    return handleResponse<{ success: boolean; marked_count: number }>(response);
   },
 
   // Items
@@ -93,11 +106,11 @@ export const api = {
     if (params?.sortBy) queryParams.set('sort_by', params.sortBy);
 
     const response = await fetch(`${API_BASE}/items?${queryParams}`);
-    return response.json();
+    return handleResponse<ItemsResponse>(response);
   },
 
   async getItem(id: string): Promise<FeedItem> {
     const response = await fetch(`${API_BASE}/items/${id}`);
-    return response.json();
+    return handleResponse<FeedItem>(response);
   },
 };

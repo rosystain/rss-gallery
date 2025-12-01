@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import Masonry from 'react-masonry-css';
 import type { FeedItem } from '../types';
 
@@ -56,106 +56,107 @@ interface ImageWallProps {
 }
 
 export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems }: ImageWallProps) {
-  const fullyVisibleItemsRef = useRef<Set<string>>(new Set()); // 追踪当前完全可见的卡片
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  // 使用外部的viewedItems，如果没有则使用内部的
+  const containerRef = useRef<HTMLDivElement>(null);
   const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
+  
+  // 生成稳定的 items ID 列表
+  const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
+
+  // 同步外部 viewedItems
   useEffect(() => {
     if (viewedItems) {
       viewedItemsRef.current = viewedItems;
     }
   }, [viewedItems]);
 
+  // 滚动追踪逻辑
   useEffect(() => {
     if (!onItemViewed) return;
 
-    // 断开之前的观察器
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
+    // 初始化保护期：500ms 内不检查
+    let isInitializing = true;
+    const initTimer = setTimeout(() => {
+      isInitializing = false;
+    }, 500);
 
-    // 清空之前的可见状态
-    fullyVisibleItemsRef.current.clear();
+    // 检查哪些卡片已被"看过"
+    const checkViewedItems = () => {
+      if (isInitializing) return;
+      
+      // 获取当前滚动位置（视口顶部相对于文档的位置）
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      // 水位线：视口顶部位置 + 一点缓冲（用户至少看过视口高度的 20%）
+      const waterline = scrollTop + window.innerHeight * 0.2;
+      
+      // 检查所有卡片
+      const cards = document.querySelectorAll('[data-item-id]');
+      cards.forEach((card) => {
+        const itemId = card.getAttribute('data-item-id');
+        if (!itemId) return;
+        
+        // 已经标记过的跳过
+        if (viewedItemsRef.current.has(itemId)) return;
+        
+        // 获取卡片位置（相对于文档）
+        const rect = card.getBoundingClientRect();
+        const cardBottom = rect.bottom + scrollTop; // 卡片底部相对于文档的位置
+        
+        // 如果卡片底部在水位线之上，说明用户已经滚过这张卡片
+        if (cardBottom < waterline) {
+          onItemViewed(itemId);
+        }
+      });
+    };
 
-    // 创建 Intersection Observer
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const itemId = entry.target.getAttribute('data-item-id');
-          if (!itemId) return;
-
-          // 卡片完全可见（95%以上）
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.95) {
-            console.log('Item fully visible:', itemId);
-            fullyVisibleItemsRef.current.add(itemId);
-          }
-          // 卡片离开视口
-          else if (!entry.isIntersecting && fullyVisibleItemsRef.current.has(itemId)) {
-            // 检查是从顶部还是底部离开
-            // boundingClientRect.top < 0 表示从顶部离开
-            // boundingClientRect.top > rootBounds.bottom 表示从底部离开
-            const rect = entry.boundingClientRect;
-            const isLeavingFromTop = rect.bottom < 0;
-            
-            console.log('Item leaving:', itemId, 'from top:', isLeavingFromTop, 'rect.bottom:', rect.bottom);
-            
-            // 只在从顶部离开时标记已读
-            if (isLeavingFromTop) {
-              fullyVisibleItemsRef.current.delete(itemId);
-              
-              if (!viewedItemsRef.current.has(itemId)) {
-                console.log('Marking item as viewed:', itemId);
-                onItemViewed(itemId);
-              }
-            }
-          }
-        });
-      },
-      {
-        threshold: [0, 0.5, 0.95, 1], // 多个阈值，精确追踪可见度
-        rootMargin: '0px', // 精确的视口边界
+    // 使用 throttle 的滚动监听（每 200ms 最多执行一次）
+    let lastCheck = 0;
+    const throttledCheck = () => {
+      const now = Date.now();
+      if (now - lastCheck >= 200) {
+        lastCheck = now;
+        checkViewedItems();
       }
-    );
+    };
 
-    // 观察所有卡片
-    const cards = document.querySelectorAll('[data-item-id]');
-    console.log('Observing', cards.length, 'cards');
-    cards.forEach((card) => observerRef.current?.observe(card));
+    // 监听滚动事件
+    window.addEventListener('scroll', throttledCheck, { passive: true });
+    
+    // 组件挂载后也检查一次（处理页面已经滚动的情况）
+    const mountCheck = setTimeout(() => {
+      checkViewedItems();
+    }, 600); // 等初始化保护期结束后再检查
 
     return () => {
-      observerRef.current?.disconnect();
+      clearTimeout(initTimer);
+      clearTimeout(mountCheck);
+      window.removeEventListener('scroll', throttledCheck);
     };
-  }, [items, onItemViewed]);
+  }, [itemIds, onItemViewed]);
 
-  // 当切换 feed 时重置浏览记录
-  useEffect(() => {
-    viewedItemsRef.current.clear();
-    fullyVisibleItemsRef.current.clear();
-  }, [items.length > 0 ? items[0]?.feedId : null]);
   // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
   const breakpointColumns = {
     default: columnsCount,
-    1536: Math.max(1, columnsCount - 1), // 2xl: reduce by 1
-    1280: Math.max(1, columnsCount - 1), // xl: reduce by 1
-    1024: Math.max(1, columnsCount - 2), // lg: reduce by 2
-    768: Math.max(1, columnsCount - 3),  // md: reduce by 3
-    640: 1,                               // sm: always 1
+    1536: Math.max(1, columnsCount - 1),
+    1280: Math.max(1, columnsCount - 1),
+    1024: Math.max(1, columnsCount - 2),
+    768: Math.max(1, columnsCount - 3),
+    640: 1,
   };
 
   return (
-    <Masonry
-      breakpointCols={breakpointColumns}
-      className="flex -ml-4 w-auto"
-      columnClassName="pl-4 bg-clip-padding"
-    >
-      {items.map((item) => (
-        <div
-          key={item.id}
-          data-item-id={item.id}
-          onClick={() => onItemClick(item)}
-          className="mb-4 cursor-pointer group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow bg-white"
-        >
+    <div ref={containerRef}>
+      <Masonry
+        breakpointCols={breakpointColumns}
+        className="flex -ml-4 w-auto"
+        columnClassName="pl-4 bg-clip-padding"
+      >
+        {items.map((item) => (
+          <div
+            key={item.id}
+            data-item-id={item.id}
+            onClick={() => onItemClick(item)}
+            className="mb-4 cursor-pointer group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow bg-white"
+          >
           {/* Image */}
           <div className="relative bg-gray-200 overflow-hidden">
             {item.thumbnailImage ? (
@@ -228,6 +229,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
           </div>
         </div>
       ))}
-    </Masonry>
+      </Masonry>
+    </div>
   );
 }

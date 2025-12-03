@@ -31,6 +31,9 @@ UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+# 条目清理配置：每个 Feed 最多保留的条目数，默认 1000 条，设为 0 表示不限制
+MAX_ITEMS_PER_FEED = int(os.getenv("MAX_ITEMS_PER_FEED", "1000"))
+
 
 # Initialize database
 @app.on_event("startup")
@@ -44,6 +47,36 @@ def startup_event():
     # Initial fetch after 2 seconds
     import threading
     threading.Timer(2.0, fetch_all_feeds).start()
+
+
+def cleanup_old_items(db: Session, feed_id: str):
+    """
+    清理指定 Feed 的旧条目，只保留最新的 MAX_ITEMS_PER_FEED 条。
+    采用消极策略：只在超过限制的 120% 时才清理，避免频繁操作。
+    """
+    if MAX_ITEMS_PER_FEED <= 0:
+        return  # 不限制
+    
+    item_count = db.query(FeedItem).filter(FeedItem.feed_id == feed_id).count()
+    
+    # 只有超过限制的 120% 才触发清理（消极策略）
+    threshold = int(MAX_ITEMS_PER_FEED * 1.2)
+    if item_count <= threshold:
+        return
+    
+    # 获取需要删除的条目（最旧的）
+    items_to_delete = item_count - MAX_ITEMS_PER_FEED
+    old_items = db.query(FeedItem).filter(
+        FeedItem.feed_id == feed_id
+    ).order_by(
+        FeedItem.published_at.asc()
+    ).limit(items_to_delete).all()
+    
+    if old_items:
+        deleted_ids = [item.id for item in old_items]
+        db.query(FeedItem).filter(FeedItem.id.in_(deleted_ids)).delete(synchronize_session=False)
+        db.commit()
+        print(f"Cleaned up {len(deleted_ids)} old items from feed {feed_id}")
 
 
 def process_feed_images(feed_id: str):
@@ -67,6 +100,39 @@ def process_feed_images(feed_id: str):
                 db.rollback()
     finally:
         db.close()
+
+
+def retry_failed_images(db: Session, feed_id: str, max_retries: int = 5):
+    """
+    重试下载之前失败的图片。
+    只处理有 cover_image 但没有 thumbnail_image 的条目。
+    每次最多重试 max_retries 个，避免阻塞太久。
+    """
+    failed_items = db.query(FeedItem).filter(
+        FeedItem.feed_id == feed_id,
+        FeedItem.cover_image != None,
+        FeedItem.thumbnail_image == None
+    ).limit(max_retries).all()
+    
+    if not failed_items:
+        return
+    
+    retried = 0
+    success = 0
+    for item in failed_items:
+        try:
+            thumbnail_path = download_and_process_image(item.cover_image)
+            if thumbnail_path:
+                item.thumbnail_image = thumbnail_path
+                success += 1
+            retried += 1
+        except Exception as e:
+            print(f"Retry failed for item {item.id}: {e}")
+            retried += 1
+    
+    if retried > 0:
+        db.commit()
+        print(f"Retried {retried} failed images, {success} succeeded for feed {feed_id}")
 
 
 def fetch_all_feeds():
@@ -110,15 +176,30 @@ def fetch_all_feeds():
                     db.add(item)
                     new_items += 1
                 
-                # Update feed's last_fetched_at
+                # Update feed's last_fetched_at and clear error
                 feed.last_fetched_at = datetime.utcnow()
+                feed.last_fetch_error = None  # 清除错误状态
                 db.commit()
                 
                 print(f"Added {new_items} new items from {feed.title}")
                 
+                # 重试之前失败的图片（每次最多 5 个）
+                retry_failed_images(db, feed.id)
+                
+                # 清理旧条目（消极策略，超过 120% 才清理）
+                cleanup_old_items(db, feed.id)
+                
             except Exception as e:
-                print(f"Error fetching feed {feed.title}: {e}")
+                error_msg = str(e)
+                print(f"Error fetching feed {feed.title}: {error_msg}")
                 db.rollback()
+                # 记录错误状态
+                try:
+                    feed.last_fetch_error = error_msg[:500]  # 限制错误信息长度
+                    feed.last_fetched_at = datetime.utcnow()
+                    db.commit()
+                except:
+                    db.rollback()
     finally:
         db.close()
 
@@ -155,6 +236,7 @@ def get_feeds(db: Session = Depends(get_db)):
             "category": feed.category,
             "update_interval": feed.update_interval,
             "last_fetched_at": feed.last_fetched_at,
+            "last_fetch_error": feed.last_fetch_error,
             "is_active": feed.is_active,
             "created_at": feed.created_at,
             "items_count": items_count,
@@ -168,20 +250,46 @@ def get_feeds(db: Session = Depends(get_db)):
 @app.post("/api/feeds", response_model=FeedResponse)
 def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
     """Create a new feed and parse its content"""
+    from urllib.parse import urlparse
+    
     # Check if feed already exists
     existing = db.query(Feed).filter(Feed.url == feed_data.url).first()
     if existing:
         raise HTTPException(status_code=400, detail="Feed URL already exists")
     
+    warning_message = None
+    fetch_error = None  # 用于记录到数据库的错误信息
+    feed_info = None
+    entries = []
+    
+    # Try to parse RSS feed
     try:
-        # Parse RSS feed
         result = parse_rss_feed(feed_data.url)
         feed_info = result['feed_info']
+        entries = result['entries']
+    except Exception as e:
+        # RSS 解析失败，但仍然创建订阅
+        error_str = str(e)
+        fetch_error = error_str[:500]  # 限制错误信息长度
+        warning_message = f"订阅已添加，但获取内容时出现问题: {error_str}。系统将在后续自动重试获取内容。"
+        print(f"Warning: Failed to parse RSS feed {feed_data.url}: {e}")
         
+        # 使用 URL 生成默认信息
+        parsed_url = urlparse(feed_data.url)
+        feed_info = {
+            'title': parsed_url.netloc or feed_data.url,
+            'site_url': f"{parsed_url.scheme}://{parsed_url.netloc}" if parsed_url.netloc else None,
+            'description': None,
+        }
+    
+    try:
         # Fetch favicon
         favicon_url = None
         if feed_info.get('site_url'):
-            favicon_url = get_favicon_url(feed_info['site_url'])
+            try:
+                favicon_url = get_favicon_url(feed_info['site_url'])
+            except Exception as e:
+                print(f"Warning: Failed to fetch favicon: {e}")
         
         # Create feed
         feed = Feed(
@@ -192,13 +300,14 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             description=feed_info.get('description'),
             favicon=favicon_url,
             category=feed_data.category,
+            last_fetch_error=fetch_error,  # 记录首次抓取的错误状态
         )
         db.add(feed)
         db.commit()
         db.refresh(feed)
         
         # Parse and store entries (without processing images)
-        for entry_data in result['entries']:
+        for entry_data in entries:
             item = FeedItem(
                 id=str(uuid.uuid4()),
                 feed_id=feed.id,
@@ -216,9 +325,10 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
         
         db.commit()
         
-        # Process images in background
-        import threading
-        threading.Thread(target=process_feed_images, args=(feed.id,)).start()
+        # Process images in background (only if we have entries)
+        if entries:
+            import threading
+            threading.Thread(target=process_feed_images, args=(feed.id,)).start()
         
         return FeedResponse(
             id=feed.id,
@@ -230,9 +340,11 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             category=feed.category,
             update_interval=feed.update_interval,
             last_fetched_at=feed.last_fetched_at,
+            last_fetch_error=feed.last_fetch_error,  # 返回错误状态
             is_active=feed.is_active,
             created_at=feed.created_at,
-            items_count=len(result['entries']),
+            items_count=len(entries),
+            warning=warning_message,
         )
         
     except Exception as e:
@@ -462,13 +574,18 @@ def fetch_feed(feed_id: str, db: Session = Depends(get_db)):
             new_items += 1
         
         feed.last_fetched_at = datetime.utcnow()
+        feed.last_fetch_error = None  # 清除错误状态
         db.commit()
         
         return {"success": True, "newItems": new_items}
         
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Failed to fetch feed: {str(e)}")
+        error_msg = str(e)
+        # 记录错误状态
+        feed.last_fetch_error = error_msg[:500]
+        feed.last_fetched_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Failed to fetch feed: {error_msg}")
 
 
 @app.get("/api/items", response_model=ItemsListResponse)
@@ -580,6 +697,32 @@ def get_item(item_id: str, db: Session = Depends(get_db)):
             "category": item.feed.category,
         } if item.feed else None,
     )
+
+
+@app.post("/api/items/{item_id}/refresh-image")
+def refresh_item_image(item_id: str, db: Session = Depends(get_db)):
+    """
+    尝试重新下载并处理条目的封面图片。
+    用于修复之前下载失败的图片。
+    """
+    item = db.query(FeedItem).filter(FeedItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    if not item.cover_image:
+        raise HTTPException(status_code=400, detail="No cover image URL available")
+    
+    try:
+        thumbnail_path = download_and_process_image(item.cover_image)
+        if thumbnail_path:
+            item.thumbnail_image = thumbnail_path
+            db.commit()
+            return {"success": True, "thumbnail_image": thumbnail_path}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to process image")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to refresh image: {str(e)}")
 
 
 # Serve frontend static files (only in production/Docker)

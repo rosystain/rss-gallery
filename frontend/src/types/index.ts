@@ -8,11 +8,13 @@ export interface Feed {
   category?: string;
   updateInterval: number;
   lastFetchedAt?: string;
+  lastFetchError?: string;  // 上次抓取失败的错误信息
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   itemsCount?: number;
   unreadCount?: number;
+  warning?: string;  // 订阅存在问题时的警告信息
 }
 
 export interface FeedItem {

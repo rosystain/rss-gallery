@@ -113,4 +113,11 @@ export const api = {
     const response = await fetch(`${API_BASE}/items/${id}`);
     return handleResponse<FeedItem>(response);
   },
+
+  async refreshItemImage(itemId: string): Promise<{ success: boolean; thumbnail_image: string }> {
+    const response = await fetch(`${API_BASE}/items/${itemId}/refresh-image`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; thumbnail_image: string }>(response);
+  },
 };

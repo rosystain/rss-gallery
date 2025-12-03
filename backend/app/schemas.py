@@ -55,10 +55,12 @@ class FeedResponse(BaseModel):
     category: Optional[str]
     update_interval: int
     last_fetched_at: Optional[datetime]
+    last_fetch_error: Optional[str] = None  # 上次抓取失败的错误信息
     is_active: bool
     created_at: datetime
     items_count: Optional[int] = None
     unread_count: Optional[int] = None
+    warning: Optional[str] = None  # 订阅存在问题时的警告信息
 
     class Config:
         from_attributes = True

@@ -336,12 +336,17 @@ function App() {
     if (!newFeedUrl) return;
 
     try {
-      await api.createFeed(newFeedUrl);
+      const result = await api.createFeed(newFeedUrl);
       setNewFeedUrl('');
       setShowAddFeed(false);
       await loadFeeds();
       setPage(1);
       triggerRefresh();
+      
+      // 如果有警告信息，显示给用户
+      if (result.warning) {
+        alert(result.warning);
+      }
       
       // Refresh items after 3 seconds to get processed images
       setTimeout(() => {
@@ -349,7 +354,30 @@ function App() {
       }, 3000);
     } catch (error) {
       console.error('Failed to add feed:', error);
-      alert('添加订阅失败，请检查URL是否正确');
+      // 提取并显示后端返回的具体错误信息
+      let errorMessage = '添加订阅失败，请检查URL是否正确';
+      if (error instanceof Error) {
+        const match = error.message.match(/API Error \(\d+\): (.+)/);
+        if (match) {
+          try {
+            const detail = JSON.parse(match[1]);
+            if (detail.detail) {
+              // 翻译常见错误信息
+              if (detail.detail === 'Feed URL already exists') {
+                errorMessage = '该订阅地址已存在';
+              } else {
+                errorMessage = detail.detail;
+              }
+            }
+          } catch {
+            // 如果不是 JSON，直接使用错误信息
+            if (match[1].includes('Feed URL already exists')) {
+              errorMessage = '该订阅地址已存在';
+            }
+          }
+        }
+      }
+      alert(errorMessage);
     }
   };
 
@@ -505,7 +533,7 @@ function App() {
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
-                  title={sidebarCollapsed ? feed.title : ''}
+                  title={sidebarCollapsed ? feed.title : (feed.lastFetchError ? `⚠️ 抓取失败: ${feed.lastFetchError}` : '')}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {feed.favicon ? (
@@ -535,6 +563,17 @@ function App() {
                       </svg>
                     )}
                     {!sidebarCollapsed && <span className="truncate text-sm">{feed.title}</span>}
+                    {/* 抓取失败时显示黄色感叹号 */}
+                    {feed.lastFetchError && (
+                      <span 
+                        className="flex-shrink-0" 
+                        title={`抓取失败: ${feed.lastFetchError}`}
+                      >
+                        <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                    )}
                   </div>
                   {!sidebarCollapsed && feed.unreadCount !== undefined && feed.unreadCount > 0 && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${

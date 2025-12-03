@@ -67,10 +67,29 @@ npm run dev
 
 ## 环境变量
 
-- `DATABASE_URL`：数据库连接字符串（默认：`sqlite:///./data/rss_wall.db`）
-- `DATA_DIR`：数据目录（默认：`./data`）
-- `UPLOAD_DIR`：上传目录（默认：`./data/uploads`）
-- `FETCH_INTERVAL_MINUTES`：RSS 抓取间隔（默认：30 分钟）
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `DATABASE_URL` | `sqlite:///./data/rss_wall.db` | 数据库连接字符串 |
+| `DATA_DIR` | `./data` | 数据存储目录 |
+| `FETCH_INTERVAL_MINUTES` | `30` | RSS 自动抓取间隔（分钟） |
+| `THUMBNAIL_WIDTH` | `600` | 缩略图最大宽度（像素） |
+| `THUMBNAIL_HEIGHT` | `1200` | 缩略图最大高度（像素） |
+| `CACHE_SIZE_LIMIT_MB` | `1000` | 图片缓存大小上限（MB），设为 0 表示无限制 |
+| `MAX_ITEMS_PER_FEED` | `1000` | 每个 Feed 最多保留条目数，设为 0 表示无限制 |
+| `RSS_REQUEST_TIMEOUT` | `60` | RSS 请求超时时间（秒） |
+| `RSS_MAX_RETRIES` | `2` | RSS 请求失败重试次数 |
+| `RSS_RETRY_DELAY` | `3` | RSS 请求重试间隔（秒） |
+
+### Docker 中使用环境变量
+
+```bash
+docker run -d \
+  -v /path/to/data:/app/backend/data \
+  -p 5002:5002 \
+  -e CACHE_SIZE_LIMIT_MB=1000 \
+  -e FETCH_INTERVAL_MINUTES=60 \
+  ghcr.io/rosystain/rss-gallery:latest
+```
 
 ## API 文档
 

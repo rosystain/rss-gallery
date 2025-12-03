@@ -34,6 +34,21 @@ python -m app.main
 - ✅ 自动处理防盗链
 - ✅ WebP 格式优化
 
+## 环境变量
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `DATA_DIR` | `./data` | 数据存储目录 |
+| `DATABASE_URL` | `sqlite:///./data/rss_wall.db` | 数据库连接 URL |
+| `FETCH_INTERVAL_MINUTES` | `30` | 自动抓取间隔（分钟） |
+| `THUMBNAIL_WIDTH` | `600` | 缩略图最大宽度 |
+| `THUMBNAIL_HEIGHT` | `1200` | 缩略图最大高度 |
+| `CACHE_SIZE_LIMIT_MB` | `1000` | 图片缓存大小上限（MB），设为 0 表示无限制 |
+| `MAX_ITEMS_PER_FEED` | `1000` | 每个 Feed 最多保留条目数，设为 0 表示无限制 |
+| `RSS_REQUEST_TIMEOUT` | `60` | RSS 请求超时时间（秒） |
+| `RSS_MAX_RETRIES` | `2` | RSS 请求失败重试次数 |
+| `RSS_RETRY_DELAY` | `3` | RSS 请求重试间隔（秒） |
+
 ## API 文档
 
 启动后访问:

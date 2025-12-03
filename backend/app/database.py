@@ -23,6 +23,7 @@ class Feed(Base):
     category = Column(String)
     update_interval = Column(Integer, default=30)
     last_fetched_at = Column(DateTime)
+    last_fetch_error = Column(String)  # 上次抓取失败的错误信息，成功时为 None
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

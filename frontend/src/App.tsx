@@ -4,6 +4,7 @@ import { api } from './services/api';
 import type { FeedItem, Feed } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
+import ThemeToggle from './components/ThemeToggle';
 
 function App() {
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -467,20 +468,20 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex">
       {/* Left Sidebar */}
-      <aside className={`bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
+      <aside className={`bg-white dark:bg-dark-card border-r border-gray-200 dark:border-dark-border flex flex-col h-screen sticky top-0 transition-all duration-300 ${
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
         {/* Sidebar Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          {!sidebarCollapsed && <h1 className="text-lg font-semibold text-gray-900">RSS 图片墙</h1>}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
+          {!sidebarCollapsed && <h1 className="text-lg font-semibold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition ml-auto"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition ml-auto"
             title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {sidebarCollapsed ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
               ) : (
@@ -498,8 +499,8 @@ function App() {
               onClick={() => handleFeedFilter('')}
               className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between group ${
                 selectedFeed === ''
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                  : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
               }`}
               title={sidebarCollapsed ? '全部' : ''}
             >
@@ -514,9 +515,7 @@ function App() {
               {!sidebarCollapsed && (() => {
                 const totalUnread = feeds.reduce((sum, f) => sum + (f.unreadCount || 0), 0);
                 return totalUnread > 0 ? (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    selectedFeed === '' ? 'bg-blue-500' : 'bg-red-500 text-white'
-                  }`}>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-400 dark:bg-gray-600 text-white">
                     {totalUnread}
                   </span>
                 ) : null;
@@ -526,7 +525,7 @@ function App() {
             {/* Feed Items */}
             <div className="mt-4">
               {!sidebarCollapsed && (
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-dark-text-secondary uppercase tracking-wider">
                   订阅列表
                 </div>
               )}
@@ -536,8 +535,8 @@ function App() {
                   onClick={() => handleFeedFilter(feed.id)}
                   className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between ${
                     selectedFeed === feed.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                      : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                   title={sidebarCollapsed ? feed.title : (feed.lastFetchError ? `⚠️ 抓取失败: ${feed.lastFetchError}` : '')}
                 >
@@ -582,9 +581,7 @@ function App() {
                     )}
                   </div>
                   {!sidebarCollapsed && feed.unreadCount !== undefined && feed.unreadCount > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${
-                      selectedFeed === feed.id ? 'bg-blue-500' : 'bg-red-500 text-white'
-                    }`}>
+                    <span className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 bg-gray-400 dark:bg-gray-600 text-white">
                       {feed.unreadCount}
                     </span>
                   )}
@@ -595,10 +592,10 @@ function App() {
         </div>
 
         {/* Add Feed Button */}
-        <div className="p-2 border-t border-gray-200">
+        <div className="p-2 border-t border-gray-200 dark:border-dark-border">
           <button
             onClick={() => setShowAddFeed(!showAddFeed)}
-            className={`w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 ${
+            className={`w-full py-2 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 ${
               sidebarCollapsed ? 'justify-center px-0' : 'justify-center px-4'
             }`}
             title={sidebarCollapsed ? '添加订阅' : ''}
@@ -614,16 +611,16 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
+        <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-6 py-4 sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
                 {selectedFeed 
                   ? feeds.find(f => f.id === selectedFeed)?.title 
                   : '全部内容'
                 }
               </h2>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-dark-text-secondary">
                 {items.length} 项
               </span>
             </div>
@@ -634,7 +631,7 @@ function App() {
               <div className="relative">
                 <button
                   onClick={() => setShowWidthSlider(!showWidthSlider)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   title="调整图片大小"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -643,26 +640,26 @@ function App() {
                 </button>
                 
                 {showWidthSlider && (
-                  <div className="absolute right-0 mt-2 p-4 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[280px]">
+                  <div className="absolute right-0 mt-2 p-4 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border z-50 min-w-[280px]">
                     {/* 图片大小 */}
                     <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 mb-2">图片大小</div>
+                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">图片大小</div>
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs text-gray-500 whitespace-nowrap">大</span>
+                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">大</span>
                         <input
                           type="range"
                           min="1"
                           max="10"
                           value={getCurrentImageWidth()}
                           onChange={(e) => setCurrentImageWidth(parseInt(e.target.value))}
-                          className="flex-1 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                          className="flex-1 h-1.5 bg-gray-300 dark:bg-dark-border rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
-                        <span className="text-xs text-gray-500 whitespace-nowrap">小</span>
+                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">小</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">{getCurrentImageWidth()} 列</span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-sm text-gray-600 dark:text-dark-text">{getCurrentImageWidth()} 列</span>
+                          <span className="text-xs text-gray-400 dark:text-dark-text-secondary">
                             {selectedFeed ? (feedImageWidths[selectedFeed] !== undefined ? '当前订阅' : '跟随全局') : '全局默认'}
                           </span>
                         </div>
@@ -679,11 +676,11 @@ function App() {
                     </div>
 
                     {/* 分隔线 */}
-                    <div className="border-t border-gray-200 my-4"></div>
+                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
 
                     {/* 每页显示项目数 */}
                     <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 mb-2">每页显示</div>
+                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">每页显示</div>
                       <div className="flex items-center gap-3">
                         <input
                           type="number"
@@ -692,25 +689,25 @@ function App() {
                           step="10"
                           value={itemsPerPage}
                           onChange={(e) => setItemsPerPage(Math.max(10, Math.min(100, parseInt(e.target.value) || 20)))}
-                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-dark-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text"
                         />
-                        <span className="text-sm text-gray-600">项</span>
+                        <span className="text-sm text-gray-600 dark:text-dark-text">项</span>
                       </div>
                     </div>
 
                     {/* 分隔线 */}
-                    <div className="border-t border-gray-200 my-4"></div>
+                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
 
                     {/* 排序方式 */}
                     <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 mb-2">排序方式</div>
+                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">排序方式</div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setSortBy('published')}
                           className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
                             sortBy === 'published'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
                           }`}
                         >
                           发布时间
@@ -719,8 +716,8 @@ function App() {
                           onClick={() => setSortBy('created')}
                           className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
                             sortBy === 'created'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
                           }`}
                         >
                           抓取时间
@@ -729,16 +726,16 @@ function App() {
                     </div>
 
                     {/* 分隔线 */}
-                    <div className="border-t border-gray-200 my-4"></div>
+                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
 
                     {/* 自动加载 */}
                     <div>
-                      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-text cursor-pointer">
                         <input
                           type="checkbox"
                           checked={autoLoadMore}
                           onChange={(e) => setAutoLoadMore(e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
                         />
                         <span>自动加载更多</span>
                       </label>
@@ -750,7 +747,7 @@ function App() {
               {/* Unread Filter Button */}
               <button
                 onClick={() => setCurrentUnreadFilter(!getCurrentUnreadFilter())}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
+                className="p-2 text-gray-500 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                 title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
               >
                 {getCurrentUnreadFilter() ? (
@@ -764,9 +761,12 @@ function App() {
                 )}
               </button>
               
+              {/* Theme Toggle */}
+              <ThemeToggle />
+              
               <button
                 onClick={() => triggerRefresh()}
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                 title="刷新"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -776,7 +776,7 @@ function App() {
               
               <Menu as="div" className="relative">
                 <Menu.Button
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   title="更多操作"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -784,7 +784,7 @@ function App() {
                   </svg>
                 </Menu.Button>
                 
-                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 focus:outline-none">
+                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
                   <Menu.Item>
                     {({ active }) => {
                       const hasUnread = selectedFeed 
@@ -795,7 +795,7 @@ function App() {
                           onClick={handleMarkAllAsRead}
                           disabled={!hasUnread}
                           className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                            active ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
+                            active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -815,7 +815,7 @@ function App() {
                             <button
                               onClick={() => currentFeed && handleEditFeed(currentFeed)}
                               className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                active ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
+                                active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
                               }`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -833,7 +833,7 @@ function App() {
                             <button
                               onClick={() => currentFeed && handleDeleteFeed(currentFeed.id, currentFeed.title)}
                               className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                active ? 'bg-red-50 text-red-700' : 'text-red-600'
+                                active ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'text-red-600 dark:text-red-400'
                               }`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -855,11 +855,11 @@ function App() {
         {/* Add Feed Modal/Form */}
         {showAddFeed && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddFeed(false)}>
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-4">添加新订阅</h3>
+            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-text">添加新订阅</h3>
               <form onSubmit={handleAddFeed} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
                     RSS 订阅地址
                   </label>
                   <input
@@ -867,7 +867,7 @@ function App() {
                     value={newFeedUrl}
                     onChange={(e) => setNewFeedUrl(e.target.value)}
                     placeholder="https://example.com/feed.xml"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
                     required
                     autoFocus
                   />
@@ -876,13 +876,13 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setShowAddFeed(false)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                    className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   >
                     取消
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    className="px-4 py-2 bg-gray-700 dark:bg-dark-border text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition"
                   >
                     添加
                   </button>
@@ -895,11 +895,11 @@ function App() {
         {/* Edit Feed Modal */}
         {editingFeed && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingFeed(null)}>
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-4">编辑订阅</h3>
+            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-text">编辑订阅</h3>
               <form onSubmit={handleUpdateFeed} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
                     订阅名称
                   </label>
                   <input
@@ -907,13 +907,13 @@ function App() {
                     value={editFeedTitle}
                     onChange={(e) => setEditFeedTitle(e.target.value)}
                     placeholder="订阅名称"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
                     required
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
                     RSS链接
                   </label>
                   <input
@@ -921,7 +921,7 @@ function App() {
                     value={editFeedUrl}
                     onChange={(e) => setEditFeedUrl(e.target.value)}
                     placeholder="https://example.com/feed.xml"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
                     required
                   />
                 </div>
@@ -929,13 +929,13 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setEditingFeed(null)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                    className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   >
                     取消
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    className="px-4 py-2 bg-gray-700 dark:bg-dark-border text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition"
                   >
                     保存
                   </button>
@@ -953,11 +953,11 @@ function App() {
             </div>
           ) : items.length === 0 ? (
             <div className="text-center py-16">
-              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">暂无内容</h3>
-              <p className="mt-2 text-gray-500">
+              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-dark-text">暂无内容</h3>
+              <p className="mt-2 text-gray-500 dark:text-dark-text-secondary">
                 {feeds.length === 0 ? '请先添加RSS订阅源' : '该订阅源暂无内容'}
               </p>
             </div>
@@ -973,16 +973,32 @@ function App() {
               />
               
               {/* Load More Button */}
-              {hasMore && (
+              {hasMore ? (
                 <div ref={loadMoreButtonRef} className="flex justify-center mt-8">
                   <button
                     onClick={loadMore}
                     disabled={isLoading}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+                    className="px-6 py-3 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border disabled:bg-gray-300 dark:disabled:bg-dark-border disabled:text-gray-400 transition"
                   >
                     {isLoading ? '加载中...' : '加载更多'}
                   </button>
                 </div>
+              ) : (
+                /* Mark All as Read Button - shown when no more items to load */
+                items.some(item => item.isUnread) && (
+                  <div className="flex flex-col items-center mt-8 mb-4">
+                    <p className="text-sm text-gray-400 dark:text-dark-text-secondary mb-3">已加载全部内容</p>
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="px-6 py-3 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      标记全部为已读
+                    </button>
+                  </div>
+                )
               )}
             </>
           )}

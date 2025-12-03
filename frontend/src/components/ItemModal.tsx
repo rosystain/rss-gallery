@@ -39,13 +39,13 @@ export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-7xl mx-4 transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-7xl mx-4 transform overflow-hidden rounded-2xl bg-white dark:bg-dark-card shadow-xl transition-all">
                 {/* Content */}
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
                   {/* Close Button */}
                   <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2 transition shadow-md"
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-dark-text bg-white dark:bg-dark-hover rounded-full p-2 transition shadow-md"
                   >
                     <svg
                       className="w-6 h-6"
@@ -63,12 +63,12 @@ export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
                   </button>
 
                   {/* Title */}
-                  <Dialog.Title className="text-2xl font-bold text-gray-900 mb-4">
+                  <Dialog.Title className="text-2xl font-bold text-gray-900 dark:text-dark-text mb-4">
                     {item.title}
                   </Dialog.Title>
 
                   {/* Meta Info */}
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6 pb-4 border-b">
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-dark-text-secondary mb-6 pb-4 border-b border-gray-200 dark:border-dark-border">
                     {item.author && (
                       <div className="flex items-center gap-1">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -99,7 +99,7 @@ export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
                       {categories.map((cat: string, idx: number) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                          className="px-3 py-1 bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text-secondary text-xs rounded-full"
                         >
                           {cat}
                         </span>
@@ -109,7 +109,7 @@ export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
 
                   {/* Content */}
                   <div
-                    className="prose prose-sm max-w-none text-gray-700 mb-6"
+                    className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-dark-text mb-6"
                     dangerouslySetInnerHTML={{ __html: item.content || item.description || '' }}
                   />
 
@@ -118,7 +118,7 @@ export default function ItemModal({ item, isOpen, onClose }: ItemModalProps) {
                     href={item.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 dark:bg-dark-border text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition"
                   >
                     <span>查看原文</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

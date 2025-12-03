@@ -3,6 +3,9 @@ import Masonry from 'react-masonry-css';
 import type { FeedItem } from '../types';
 import { api } from '../services/api';
 
+// 悬浮标记已读的延迟时间（毫秒）
+const HOVER_READ_DELAY = 1500;
+
 // 格式化相对时间
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -55,6 +58,7 @@ interface ImageWallProps {
   onItemViewed?: (itemId: string) => void; // 当卡片完整浏览后的回调
   viewedItems?: Set<string>; // 从外部传入的已浏览项目集合
   onItemUpdated?: (itemId: string, updates: Partial<FeedItem>) => void; // 当条目更新时的回调
+  onItemHoverRead?: (itemId: string) => void; // 当鼠标悬浮足够长时间后的回调
 }
 
 // 单个图片卡片组件，处理加载失败和重试逻辑
@@ -155,9 +159,11 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   );
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated }: ImageWallProps) {
+export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead }: ImageWallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
+  const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
+  const hoverReadItemsRef = useRef<Set<string>>(new Set()); // 已通过悬浮标记为已读的items
   
   // 生成稳定的 items ID 列表
   const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
@@ -249,6 +255,46 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }
   }, [onItemUpdated]);
 
+  // 处理鼠标悬浮开始
+  const handleMouseEnter = useCallback((item: FeedItem) => {
+    // 如果已经是已读状态或已通过悬浮标记过，跳过
+    if (!item.isUnread || hoverReadItemsRef.current.has(item.id)) {
+      return;
+    }
+
+    // 清除可能存在的旧定时器
+    const existingTimer = hoverTimerRef.current.get(item.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // 设置新的定时器
+    const timer = setTimeout(() => {
+      hoverReadItemsRef.current.add(item.id);
+      hoverTimerRef.current.delete(item.id);
+      onItemHoverRead?.(item.id);
+    }, HOVER_READ_DELAY);
+
+    hoverTimerRef.current.set(item.id, timer);
+  }, [onItemHoverRead]);
+
+  // 处理鼠标悬浮结束
+  const handleMouseLeave = useCallback((itemId: string) => {
+    const timer = hoverTimerRef.current.get(itemId);
+    if (timer) {
+      clearTimeout(timer);
+      hoverTimerRef.current.delete(itemId);
+    }
+  }, []);
+
+  // 组件卸载时清除所有定时器
+  useEffect(() => {
+    return () => {
+      hoverTimerRef.current.forEach(timer => clearTimeout(timer));
+      hoverTimerRef.current.clear();
+    };
+  }, []);
+
   // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
   const breakpointColumns = {
     default: columnsCount,
@@ -271,6 +317,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             key={item.id}
             data-item-id={item.id}
             onClick={() => onItemClick(item)}
+            onMouseEnter={() => handleMouseEnter(item)}
+            onMouseLeave={() => handleMouseLeave(item.id)}
             className="mb-4 cursor-pointer group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow bg-white"
           >
           {/* Image */}

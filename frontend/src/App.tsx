@@ -266,6 +266,12 @@ function App() {
     }, 2000);
   };
 
+  // 处理鼠标悬浮足够长时间后标记已读
+  const handleItemHoverRead = (itemId: string) => {
+    // 复用 handleItemViewed 的逻辑
+    handleItemViewed(itemId);
+  };
+
   // 切换 feed 时先提交待标记项目，再重置浏览记录
   useEffect(() => {
     // 先提交当前待标记的项目
@@ -963,6 +969,7 @@ function App() {
                 columnsCount={getCurrentImageWidth()}
                 onItemViewed={handleItemViewed}
                 viewedItems={viewedItems}
+                onItemHoverRead={handleItemHoverRead}
               />
               
               {/* Load More Button */}

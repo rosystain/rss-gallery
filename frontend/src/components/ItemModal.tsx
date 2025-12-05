@@ -1,10 +1,121 @@
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment, useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { FeedItem, CustomIntegration } from '../types';
 import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent } from './IntegrationSettings';
 
 // 复制成功提示的显示时间（毫秒）
 const COPY_TOAST_DURATION = 2000;
+
+// 图片信息类型
+interface ImageInfo {
+  src: string;
+  alt: string;
+}
+
+// 图片画册查看器组件
+interface ImageViewerProps {
+  images: ImageInfo[];
+  initialIndex: number;
+  onClose: () => void;
+}
+
+function ImageViewer({ images, initialIndex, onClose }: ImageViewerProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  
+  const currentImage = images[currentIndex];
+  const hasMultiple = images.length > 1;
+
+  const goToPrev = useCallback(() => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  }, [images.length]);
+
+  const goToNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  }, [images.length]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        goToPrev();
+      } else if (e.key === 'ArrowRight') {
+        goToNext();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, goToPrev, goToNext]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] bg-black bg-opacity-90 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* 关闭按钮 */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2 transition z-10"
+      >
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {/* 上一张按钮 */}
+      {hasMultiple && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            goToPrev();
+          }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-3 transition z-10"
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* 下一张按钮 */}
+      {hasMultiple && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            goToNext();
+          }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full p-3 transition z-10"
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+      
+      {/* 图片 */}
+      <img
+        src={currentImage.src}
+        alt={currentImage.alt}
+        className="max-w-[90vw] max-h-[85vh] object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* 页码指示器 */}
+      {hasMultiple && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black bg-opacity-50 px-4 py-2 rounded-full">
+          <span className="text-white text-sm">
+            {currentIndex + 1} / {images.length}
+          </span>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
 
 interface ItemModalProps {
   item: FeedItem | null;
@@ -25,6 +136,72 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
   const [copied, setCopied] = useState(false);
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]);
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null);
+  const [viewerState, setViewerState] = useState<{ images: ImageInfo[]; initialIndex: number } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // 从内容中提取所有图片
+  const extractImages = useCallback((): ImageInfo[] => {
+    const contentEl = contentRef.current;
+    if (!contentEl) return [];
+    
+    const images: ImageInfo[] = [];
+    const imgElements = contentEl.querySelectorAll('img');
+    
+    imgElements.forEach((img) => {
+      // 检查图片是否被链接包裹
+      const parentLink = img.closest('a');
+      const src = parentLink?.href || img.src;
+      
+      // 过滤掉太小的图片（可能是图标/emoji）
+      if (src && !images.some(i => i.src === src)) {
+        images.push({ src, alt: img.alt || '' });
+      }
+    });
+    
+    return images;
+  }, []);
+
+  // 处理内容区域的图片点击
+  useEffect(() => {
+    const contentEl = contentRef.current;
+    if (!contentEl || !isOpen) return;
+
+    const handleClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      let clickedImgSrc: string | null = null;
+      
+      // 检查点击的是否是图片
+      if (target.tagName === 'IMG') {
+        e.preventDefault();
+        e.stopPropagation();
+        const img = target as HTMLImageElement;
+        const parentLink = img.closest('a');
+        clickedImgSrc = parentLink?.href || img.src;
+      }
+      // 检查点击的是否是包含图片的链接
+      else if (target.tagName === 'A') {
+        const link = target as HTMLAnchorElement;
+        const img = link.querySelector('img');
+        if (img) {
+          e.preventDefault();
+          e.stopPropagation();
+          clickedImgSrc = link.href || img.src;
+        }
+      }
+
+      if (clickedImgSrc) {
+        const allImages = extractImages();
+        const initialIndex = allImages.findIndex(img => img.src === clickedImgSrc);
+        setViewerState({
+          images: allImages,
+          initialIndex: initialIndex >= 0 ? initialIndex : 0
+        });
+      }
+    };
+
+    contentEl.addEventListener('click', handleClick);
+    return () => contentEl.removeEventListener('click', handleClick);
+  }, [isOpen, item, extractImages]);
 
   // 加载自定义扩展列表
   const loadIntegrations = useCallback(async () => {
@@ -266,7 +443,8 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
 
                   {/* Content */}
                   <div
-                    className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-dark-text mb-6"
+                    ref={contentRef}
+                    className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-dark-text mb-6 [&_img]:cursor-zoom-in"
                     dangerouslySetInnerHTML={{ __html: item.content || item.description || '' }}
                   />
 
@@ -288,6 +466,15 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
           </div>
         </div>
       </Dialog>
+
+      {/* 图片画册查看器 */}
+      {viewerState && viewerState.images.length > 0 && (
+        <ImageViewer
+          images={viewerState.images}
+          initialIndex={viewerState.initialIndex}
+          onClose={() => setViewerState(null)}
+        />
+      )}
     </Transition>
   );
 }

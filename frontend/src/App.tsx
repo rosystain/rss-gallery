@@ -1224,6 +1224,9 @@ function App() {
         item={selectedItem}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
+        refreshIntegrationsTrigger={integrationsRefreshTrigger}
+        enabledIntegrations={getCurrentEnabledIntegrations()}
       />
 
       {/* Integration Settings Modal */}

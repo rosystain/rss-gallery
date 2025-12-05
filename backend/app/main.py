@@ -9,8 +9,8 @@ import json
 import os
 from datetime import datetime
 
-from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus
-from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, ItemsListResponse
+from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus, Integration
+from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse
 from app.rss_parser import parse_rss_feed, download_and_process_image
 from app.favicon_fetcher import get_favicon_url
 
@@ -44,9 +44,15 @@ def startup_event():
     scheduler.add_job(fetch_all_feeds, 'interval', minutes=int(os.getenv("FETCH_INTERVAL_MINUTES", "30")))
     scheduler.start()
     
-    # Initial fetch after 2 seconds
+    # Initial fetch after 2 seconds (wrapped in try-except to prevent startup blocking)
+    def safe_initial_fetch():
+        try:
+            fetch_all_feeds()
+        except Exception as e:
+            print(f"Error during initial feed fetch (non-blocking): {e}")
+    
     import threading
-    threading.Timer(2.0, fetch_all_feeds).start()
+    threading.Timer(2.0, safe_initial_fetch).start()
 
 
 def cleanup_old_items(db: Session, feed_id: str):
@@ -137,7 +143,12 @@ def retry_failed_images(db: Session, feed_id: str, max_retries: int = 5):
 
 def fetch_all_feeds():
     """Background task to fetch all active feeds"""
-    db = next(get_db())
+    try:
+        db = next(get_db())
+    except Exception as e:
+        print(f"Failed to get database connection for feed fetching: {e}")
+        return
+    
     try:
         feeds = db.query(Feed).filter(Feed.is_active == True).all()
         print(f"Fetching {len(feeds)} feeds...")
@@ -214,6 +225,7 @@ def health_check():
 @app.get("/api/feeds", response_model=list[FeedResponse])
 def get_feeds(db: Session = Depends(get_db)):
     """Get all feeds with item counts and unread counts"""
+    import json
     feeds = db.query(Feed).order_by(Feed.created_at.desc()).all()
     
     result = []
@@ -225,6 +237,14 @@ def get_feeds(db: Session = Depends(get_db)):
             FeedItem.feed_id == feed.id,
             FeedItem.is_read == False
         ).count()
+        
+        # Parse enabled_integrations from JSON
+        enabled_integrations = None
+        if feed.enabled_integrations:
+            try:
+                enabled_integrations = json.loads(feed.enabled_integrations)
+            except:
+                enabled_integrations = None
         
         feed_dict = {
             "id": feed.id,
@@ -241,6 +261,7 @@ def get_feeds(db: Session = Depends(get_db)):
             "created_at": feed.created_at,
             "items_count": items_count,
             "unread_count": unread_count,
+            "enabled_integrations": enabled_integrations,
         }
         result.append(FeedResponse(**feed_dict))
     
@@ -291,6 +312,12 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             except Exception as e:
                 print(f"Warning: Failed to fetch favicon: {e}")
         
+        # Serialize enabled_integrations if provided
+        enabled_integrations_json = None
+        if feed_data.enabled_integrations is not None:
+            import json
+            enabled_integrations_json = json.dumps(feed_data.enabled_integrations)
+        
         # Create feed
         feed = Feed(
             id=str(uuid.uuid4()),
@@ -301,6 +328,7 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             favicon=favicon_url,
             category=feed_data.category,
             last_fetch_error=fetch_error,  # 记录首次抓取的错误状态
+            enabled_integrations=enabled_integrations_json,
         )
         db.add(feed)
         db.commit()
@@ -330,6 +358,14 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             import threading
             threading.Thread(target=process_feed_images, args=(feed.id,)).start()
         
+        # Parse enabled_integrations for response
+        response_enabled_integrations = None
+        if feed.enabled_integrations:
+            try:
+                response_enabled_integrations = json.loads(feed.enabled_integrations)
+            except:
+                response_enabled_integrations = None
+        
         return FeedResponse(
             id=feed.id,
             title=feed.title,
@@ -345,6 +381,7 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             created_at=feed.created_at,
             items_count=len(entries),
             warning=warning_message,
+            enabled_integrations=response_enabled_integrations,
         )
         
     except Exception as e:
@@ -512,10 +549,24 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
         if feed_data.category is not None:
             feed.category = feed_data.category
         
+        # Update enabled_integrations if provided
+        if feed_data.enabled_integrations is not None:
+            import json
+            feed.enabled_integrations = json.dumps(feed_data.enabled_integrations)
+        
         db.commit()
         db.refresh(feed)
         
         items_count = db.query(FeedItem).filter(FeedItem.feed_id == feed.id).count()
+        
+        # Parse enabled_integrations from JSON
+        import json
+        enabled_integrations = None
+        if feed.enabled_integrations:
+            try:
+                enabled_integrations = json.loads(feed.enabled_integrations)
+            except:
+                enabled_integrations = None
         
         return FeedResponse(
             id=feed.id,
@@ -530,6 +581,7 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
             is_active=feed.is_active,
             created_at=feed.created_at,
             items_count=items_count,
+            enabled_integrations=enabled_integrations,
         )
         
     except Exception as e:
@@ -723,6 +775,72 @@ def refresh_item_image(item_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to refresh image: {str(e)}")
+
+
+# ==================== 扩展 API ====================
+
+@app.get("/api/integrations", response_model=list[IntegrationResponse])
+def get_integrations(db: Session = Depends(get_db)):
+    """获取所有扩展配置"""
+    integrations = db.query(Integration).order_by(Integration.sort_order, Integration.created_at).all()
+    return integrations
+
+
+@app.post("/api/integrations", response_model=IntegrationResponse)
+def create_integration(integration: IntegrationCreate, db: Session = Depends(get_db)):
+    """创建新的扩展"""
+    db_integration = Integration(
+        id=f"int_{uuid.uuid4().hex[:12]}",
+        name=integration.name,
+        type=integration.type,
+        icon=integration.icon,
+        url=integration.url,
+        webhook_url=integration.webhook_url,
+        webhook_method=integration.webhook_method,
+        webhook_body=integration.webhook_body,
+        sort_order=integration.sort_order or 0,
+    )
+    db.add(db_integration)
+    db.commit()
+    db.refresh(db_integration)
+    return db_integration
+
+
+@app.get("/api/integrations/{integration_id}", response_model=IntegrationResponse)
+def get_integration(integration_id: str, db: Session = Depends(get_db)):
+    """获取单个扩展配置"""
+    integration = db.query(Integration).filter(Integration.id == integration_id).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return integration
+
+
+@app.put("/api/integrations/{integration_id}", response_model=IntegrationResponse)
+def update_integration(integration_id: str, integration: IntegrationUpdate, db: Session = Depends(get_db)):
+    """更新扩展配置"""
+    db_integration = db.query(Integration).filter(Integration.id == integration_id).first()
+    if not db_integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    
+    update_data = integration.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_integration, key, value)
+    
+    db.commit()
+    db.refresh(db_integration)
+    return db_integration
+
+
+@app.delete("/api/integrations/{integration_id}")
+def delete_integration(integration_id: str, db: Session = Depends(get_db)):
+    """删除扩展配置"""
+    db_integration = db.query(Integration).filter(Integration.id == integration_id).first()
+    if not db_integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    
+    db.delete(db_integration)
+    db.commit()
+    return {"success": True}
 
 
 # Serve frontend static files (only in production/Docker)

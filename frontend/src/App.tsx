@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
 import { api } from './services/api';
-import type { FeedItem, Feed } from './types';
+import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
 import ThemeToggle from './components/ThemeToggle';
+import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent } from './components/IntegrationSettings';
 
 function App() {
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -17,6 +18,8 @@ function App() {
   const [selectedFeed, setSelectedFeed] = useState<string>('');
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [showAddFeed, setShowAddFeed] = useState(false);
+  const [newFeedEnabledIntegrations, setNewFeedEnabledIntegrations] = useState<string[] | null>(null);
+  const [newFeedAvailableIntegrations, setNewFeedAvailableIntegrations] = useState<CustomIntegration[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
@@ -34,6 +37,8 @@ function App() {
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   const [editFeedUrl, setEditFeedUrl] = useState('');
   const [editFeedTitle, setEditFeedTitle] = useState('');
+  const [editFeedEnabledIntegrations, setEditFeedEnabledIntegrations] = useState<string[] | null>(null);
+  const [availableIntegrations, setAvailableIntegrations] = useState<CustomIntegration[]>([]);
   const [viewedItems, setViewedItems] = useState<Set<string>>(new Set()); // 追踪已浏览的 items
   const batchMarkTimerRef = useRef<NodeJS.Timeout | null>(null); // 批量标记定时器
   const pendingMarkItemsRef = useRef<Set<string>>(new Set()); // 追踪待标记的项目（用于避免闭包问题）
@@ -53,6 +58,16 @@ function App() {
     const saved = localStorage.getItem('sortBy');
     return (saved as 'published' | 'created') || 'published';
   });
+  const [showIntegrationSettings, setShowIntegrationSettings] = useState(false);
+  const [executionHistory, setExecutionHistory] = useState<Array<{
+    id: string;
+    type: 'success' | 'error';
+    integrationName: string;
+    message: string;
+    detail?: string;
+    timestamp: Date;
+  }>>([]);
+  const [integrationsRefreshTrigger, setIntegrationsRefreshTrigger] = useState(0);
   const loadMoreButtonRef = useRef<HTMLDivElement>(null);
   const fetchVersionRef = useRef(0); // 用于追踪请求版本，避免竞态条件
 
@@ -92,6 +107,16 @@ function App() {
       return feedImageWidths[selectedFeed];
     }
     return imageWidth;
+  };
+
+  // Get current feed's enabled integrations
+  const getCurrentEnabledIntegrations = (): string[] | null => {
+    if (!selectedFeed) {
+      // 如果是"全部"视图，返回 null（显示所有扩展）
+      return null;
+    }
+    const feed = feeds.find(f => f.id === selectedFeed);
+    return feed?.enabledIntegrations ?? null;
   };
 
   const setCurrentImageWidth = (width: number) => {
@@ -343,9 +368,11 @@ function App() {
     if (!newFeedUrl) return;
 
     try {
-      const result = await api.createFeed(newFeedUrl);
+      const result = await api.createFeed(newFeedUrl, undefined, newFeedEnabledIntegrations);
       setNewFeedUrl('');
       setShowAddFeed(false);
+      setNewFeedEnabledIntegrations(null);
+      setNewFeedAvailableIntegrations([]);
       await loadFeeds();
       setPage(1);
       triggerRefresh();
@@ -444,10 +471,20 @@ function App() {
     }
   };
 
-  const handleEditFeed = (feed: Feed) => {
+  const handleEditFeed = async (feed: Feed) => {
     setEditingFeed(feed);
     setEditFeedUrl(feed.url);
     setEditFeedTitle(feed.title);
+    setEditFeedEnabledIntegrations(feed.enabledIntegrations ?? []);
+    
+    // 加载可用的扩展列表
+    try {
+      const integrations = await getCustomIntegrationsAsync();
+      setAvailableIntegrations(integrations);
+    } catch (error) {
+      console.error('Failed to load integrations:', error);
+      setAvailableIntegrations([]);
+    }
   };
 
   const handleUpdateFeed = async (e: React.FormEvent) => {
@@ -455,10 +492,16 @@ function App() {
     if (!editingFeed || !editFeedUrl || !editFeedTitle) return;
 
     try {
-      await api.updateFeed(editingFeed.id, { title: editFeedTitle, url: editFeedUrl });
+      await api.updateFeed(editingFeed.id, { 
+        title: editFeedTitle, 
+        url: editFeedUrl,
+        enabledIntegrations: editFeedEnabledIntegrations
+      });
       setEditingFeed(null);
       setEditFeedUrl('');
       setEditFeedTitle('');
+      setEditFeedEnabledIntegrations(null);
+      setAvailableIntegrations([]);
       await loadFeeds();
       triggerRefresh();
     } catch (error) {
@@ -594,7 +637,20 @@ function App() {
         {/* Add Feed Button */}
         <div className="p-2 border-t border-gray-200 dark:border-dark-border">
           <button
-            onClick={() => setShowAddFeed(!showAddFeed)}
+            onClick={async () => {
+              setShowAddFeed(!showAddFeed);
+              if (!showAddFeed) {
+                // 打开对话框时加载扩展列表
+                try {
+                  const integrations = await getCustomIntegrationsAsync();
+                  setNewFeedAvailableIntegrations(integrations);
+                  setNewFeedEnabledIntegrations([]); // 默认全部不启用
+                } catch (error) {
+                  console.error('Failed to load integrations:', error);
+                  setNewFeedAvailableIntegrations([]);
+                }
+              }
+            }}
             className={`w-full py-2 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 ${
               sidebarCollapsed ? 'justify-center px-0' : 'justify-center px-4'
             }`}
@@ -806,6 +862,21 @@ function App() {
                       );
                     }}
                   </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => setShowIntegrationSettings(true)}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                          active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                        </svg>
+                        扩展
+                      </button>
+                    )}
+                  </Menu.Item>
                   {selectedFeed && (
                     <>
                       <Menu.Item>
@@ -854,8 +925,8 @@ function App() {
 
         {/* Add Feed Modal/Form */}
         {showAddFeed && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddFeed(false)}>
-            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-text">添加新订阅</h3>
               <form onSubmit={handleAddFeed} className="space-y-4">
                 <div>
@@ -872,10 +943,80 @@ function App() {
                     autoFocus
                   />
                 </div>
+                
+                {/* 扩展启用设置 */}
+                {newFeedAvailableIntegrations.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                      启用的扩展
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-2">
+                      选择要在此订阅的卡片工具栏中显示的扩展
+                    </p>
+                    <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-dark-border rounded-lg p-2">
+                      {newFeedAvailableIntegrations.map((integration) => {
+                        const isEnabled = newFeedEnabledIntegrations?.includes(integration.id) ?? false;
+                        return (
+                          <label
+                            key={integration.id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-dark-hover rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                const currentList = newFeedEnabledIntegrations ?? [];
+                                if (e.target.checked) {
+                                  setNewFeedEnabledIntegrations([...currentList, integration.id]);
+                                } else {
+                                  setNewFeedEnabledIntegrations(currentList.filter(id => id !== integration.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
+                            />
+                            {integration.icon ? (
+                              <IntegrationIconComponent icon={integration.icon} className="w-4 h-4 text-gray-600 dark:text-dark-text-secondary" />
+                            ) : (
+                              <svg className="w-4 h-4 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 10-5.656-5.656l-1.101 1.101" />
+                              </svg>
+                            )}
+                            <span className="text-sm text-gray-700 dark:text-dark-text">{integration.name}</span>
+                            <span className="text-xs text-gray-400 dark:text-dark-text-secondary ml-auto">
+                              {integration.type === 'url' ? 'URL' : 'Webhook'}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewFeedEnabledIntegrations(newFeedAvailableIntegrations.map(i => i.id))}
+                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewFeedEnabledIntegrations([])}
+                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        全不选
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex gap-2 justify-end">
                   <button
                     type="button"
-                    onClick={() => setShowAddFeed(false)}
+                    onClick={() => {
+                      setShowAddFeed(false);
+                      setNewFeedEnabledIntegrations(null);
+                      setNewFeedAvailableIntegrations([]);
+                    }}
                     className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   >
                     取消
@@ -894,8 +1035,8 @@ function App() {
 
         {/* Edit Feed Modal */}
         {editingFeed && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingFeed(null)}>
-            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-text">编辑订阅</h3>
               <form onSubmit={handleUpdateFeed} className="space-y-4">
                 <div>
@@ -925,10 +1066,80 @@ function App() {
                     required
                   />
                 </div>
+                
+                {/* 扩展启用设置 */}
+                {availableIntegrations.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                      启用的扩展
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-2">
+                      选择要在此订阅的卡片工具栏中显示的扩展
+                    </p>
+                    <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-dark-border rounded-lg p-2">
+                      {availableIntegrations.map((integration) => {
+                        const isEnabled = editFeedEnabledIntegrations?.includes(integration.id) ?? false;
+                        return (
+                          <label
+                            key={integration.id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-dark-hover rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                const currentList = editFeedEnabledIntegrations ?? [];
+                                if (e.target.checked) {
+                                  setEditFeedEnabledIntegrations([...currentList, integration.id]);
+                                } else {
+                                  setEditFeedEnabledIntegrations(currentList.filter(id => id !== integration.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
+                            />
+                            {integration.icon ? (
+                              <IntegrationIconComponent icon={integration.icon} className="w-4 h-4 text-gray-600 dark:text-dark-text-secondary" />
+                            ) : (
+                              <svg className="w-4 h-4 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 10-5.656-5.656l-1.101 1.101" />
+                              </svg>
+                            )}
+                            <span className="text-sm text-gray-700 dark:text-dark-text">{integration.name}</span>
+                            <span className="text-xs text-gray-400 dark:text-dark-text-secondary ml-auto">
+                              {integration.type === 'url' ? 'URL' : 'Webhook'}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditFeedEnabledIntegrations(availableIntegrations.map(i => i.id))}
+                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditFeedEnabledIntegrations([])}
+                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        全不选
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex gap-2 justify-end">
                   <button
                     type="button"
-                    onClick={() => setEditingFeed(null)}
+                    onClick={() => {
+                      setEditingFeed(null);
+                      setEditFeedEnabledIntegrations(null);
+                      setAvailableIntegrations([]);
+                    }}
                     className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
                   >
                     取消
@@ -970,6 +1181,9 @@ function App() {
                 onItemViewed={handleItemViewed}
                 viewedItems={viewedItems}
                 onItemHoverRead={handleItemHoverRead}
+                onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
+                refreshIntegrationsTrigger={integrationsRefreshTrigger}
+                enabledIntegrations={getCurrentEnabledIntegrations()}
               />
               
               {/* Load More Button */}
@@ -1010,6 +1224,15 @@ function App() {
         item={selectedItem}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      {/* Integration Settings Modal */}
+      <IntegrationSettings
+        isOpen={showIntegrationSettings}
+        onClose={() => setShowIntegrationSettings(false)}
+        executionHistory={executionHistory}
+        onClearHistory={() => setExecutionHistory([])}
+        onIntegrationsChange={() => setIntegrationsRefreshTrigger(prev => prev + 1)}
       />
     </div>
   );

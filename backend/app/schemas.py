@@ -9,13 +9,14 @@ class FeedBase(BaseModel):
 
 
 class FeedCreate(FeedBase):
-    pass
+    enabled_integrations: Optional[List[str]] = None  # None 表示全部启用
 
 
 class FeedUpdate(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
     category: Optional[str] = None
+    enabled_integrations: Optional[List[str]] = None  # None 表示不修改，空列表表示禁用所有
 
 
 class FeedItemResponse(BaseModel):
@@ -61,6 +62,7 @@ class FeedResponse(BaseModel):
     items_count: Optional[int] = None
     unread_count: Optional[int] = None
     warning: Optional[str] = None  # 订阅存在问题时的警告信息
+    enabled_integrations: Optional[List[str]] = None  # 启用的扩展ID列表，None表示全部启用
 
     class Config:
         from_attributes = True
@@ -84,6 +86,56 @@ class ItemsListResponse(BaseModel):
         populate_by_name = True
         
         # Convert snake_case to camelCase for JSON
+        alias_generator = lambda string: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(string.split('_'))
+        )
+
+
+# 扩展相关 Schema
+class IntegrationBase(BaseModel):
+    name: str
+    type: str  # 'url' or 'webhook'
+    icon: Optional[str] = 'link'
+    url: Optional[str] = None
+    webhook_url: Optional[str] = None
+    webhook_method: Optional[str] = 'GET'
+    webhook_body: Optional[str] = None
+    sort_order: Optional[int] = 0
+
+
+class IntegrationCreate(IntegrationBase):
+    pass
+
+
+class IntegrationUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    icon: Optional[str] = None
+    url: Optional[str] = None
+    webhook_url: Optional[str] = None
+    webhook_method: Optional[str] = None
+    webhook_body: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class IntegrationResponse(BaseModel):
+    id: str
+    name: str
+    type: str
+    icon: Optional[str]
+    url: Optional[str]
+    webhook_url: Optional[str]
+    webhook_method: Optional[str]
+    webhook_body: Optional[str]
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+        
         alias_generator = lambda string: ''.join(
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))

@@ -25,6 +25,7 @@ class Feed(Base):
     last_fetched_at = Column(DateTime)
     last_fetch_error = Column(String)  # 上次抓取失败的错误信息，成功时为 None
     is_active = Column(Boolean, default=True)
+    enabled_integrations = Column(Text)  # JSON 数组，存储启用的扩展 ID，null 表示全部启用
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -59,6 +60,23 @@ class FeedReadStatus(Base):
     id = Column(String, primary_key=True, index=True)
     feed_id = Column(String, ForeignKey("feeds.id", ondelete="CASCADE"), nullable=False, unique=True)
     last_viewed_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Integration(Base):
+    """扩展配置"""
+    __tablename__ = "integrations"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)  # 'url' or 'webhook'
+    icon = Column(String, default='link')
+    url = Column(String)  # URL 跳转类型使用
+    webhook_url = Column(String)  # Webhook 类型使用
+    webhook_method = Column(String, default='GET')  # 'GET' or 'POST'
+    webhook_body = Column(Text)  # POST 请求体
+    sort_order = Column(Integer, default=0)  # 排序顺序
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

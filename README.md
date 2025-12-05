@@ -9,6 +9,7 @@
 - 响应式图片墙界面
 - 已读/未读状态管理
 - 按类别和搜索过滤
+- [自定义扩展](docs/custom-integrations.md)（URL 跳转、Webhook）
 
 ## Docker 部署
 
@@ -42,26 +43,6 @@ docker run -v /path/to/your/config:/app/backend/data -p 5002:5002 ghcr.io/rosyst
 
 - 容器内部端口：5002
 
-
-## 本地开发
-
-### 后端
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 3001
-```
-
-### 前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
 
 前端开发服务器运行在 `http://localhost:5173`，会代理 API 请求到 `http://localhost:3001`。
 

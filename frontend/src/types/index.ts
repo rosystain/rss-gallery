@@ -10,6 +10,7 @@ export interface Feed {
   lastFetchedAt?: string;
   lastFetchError?: string;  // 上次抓取失败的错误信息
   isActive: boolean;
+  enabledIntegrations?: string[] | null;  // 启用的扩展 ID 列表，null 表示全部启用
   createdAt: string;
   updatedAt: string;
   itemsCount?: number;
@@ -45,4 +46,63 @@ export interface ItemsResponse {
   page: number;
   limit: number;
   hasMore: boolean;
+}
+
+// 扩展类型
+export type IntegrationType = 'url' | 'webhook';
+export type WebhookMethod = 'GET' | 'POST';
+
+// 可选图标列表
+export type IntegrationIcon = 
+  | 'link'        // 链接
+  | 'globe'       // 地球
+  | 'bookmark'    // 书签
+  | 'star'        // 星星
+  | 'heart'       // 心形
+  | 'archive'     // 归档
+  | 'cloud'       // 云
+  | 'send'        // 发送
+  | 'download'    // 下载
+  | 'upload'      // 上传
+  | 'folder'      // 文件夹
+  | 'document'    // 文档
+  | 'code'        // 代码
+  | 'terminal'    // 终端
+  | 'database'    // 数据库
+  | 'share'       // 分享
+  | 'bell'        // 铃铛
+  | 'mail'        // 邮件
+  | 'chat'        // 聊天
+  | 'lightning';  // 闪电
+
+// 预设扩展（如 Obsidian 等）
+export interface PresetIntegration {
+  id: string;
+  name: string;
+  icon: string;
+  enabled: boolean;
+  config?: Record<string, string>;
+}
+
+// 自定义扩展
+export interface CustomIntegration {
+  id: string;
+  name: string;
+  type: IntegrationType;
+  icon?: IntegrationIcon; // 自选图标
+  // URL 跳转类型
+  url?: string;
+  // Webhook 类型
+  webhookUrl?: string;
+  webhookMethod?: WebhookMethod;
+  webhookBody?: string; // JSON 字符串，用于 POST 请求
+  sortOrder?: number; // 排序顺序
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 扩展
+export interface IntegrationSettings {
+  presets: PresetIntegration[];
+  custom: CustomIntegration[];
 }

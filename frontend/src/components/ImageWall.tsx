@@ -1,10 +1,14 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
-import type { FeedItem } from '../types';
+import type { FeedItem, CustomIntegration } from '../types';
 import { api } from '../services/api';
+import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent } from './IntegrationSettings';
 
 // 悬浮标记已读的延迟时间（毫秒）
 const HOVER_READ_DELAY = 1500;
+
+// 复制成功提示的显示时间（毫秒）
+const COPY_TOAST_DURATION = 2000;
 
 // 解码 HTML 实体
 function decodeHtmlEntities(text: string): string {
@@ -90,6 +94,16 @@ interface ImageWallProps {
   viewedItems?: Set<string>; // 从外部传入的已浏览项目集合
   onItemUpdated?: (itemId: string, updates: Partial<FeedItem>) => void; // 当条目更新时的回调
   onItemHoverRead?: (itemId: string) => void; // 当鼠标悬浮足够长时间后的回调
+  onAddExecutionHistory?: (entry: {
+    id: string;
+    type: 'success' | 'error';
+    integrationName: string;
+    message: string;
+    detail?: string;
+    timestamp: Date;
+  }) => void; // 添加执行历史记录的回调
+  refreshIntegrationsTrigger?: number; // 用于触发刷新扩展列表
+  enabledIntegrations?: string[] | null; // 当前订阅启用的扩展ID列表，null表示全部启用
 }
 
 // 单个图片卡片组件，处理加载失败和重试逻辑
@@ -190,11 +204,41 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   );
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead }: ImageWallProps) {
+export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger, enabledIntegrations }: ImageWallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
   const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
   const hoverReadItemsRef = useRef<Set<string>>(new Set()); // 已通过悬浮标记为已读的items
+  const [copiedItemId, setCopiedItemId] = useState<string | null>(null); // 显示复制成功提示的item
+  const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]); // 自定义扩展列表
+  const [executingIntegration, setExecutingIntegration] = useState<string | null>(null); // 正在执行的扩展 ID
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
+  const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
+  
+  // 加载自定义扩展列表
+  const loadIntegrations = useCallback(async () => {
+    try {
+      const integrations = await getCustomIntegrationsAsync();
+      setCustomIntegrations(integrations);
+    } catch (err) {
+      console.error('Failed to load integrations:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadIntegrations();
+  }, [loadIntegrations, refreshIntegrationsTrigger]);
+  
+  // 根据当前订阅的 enabledIntegrations 过滤扩展列表
+  const filteredIntegrations = useMemo(() => {
+    if (enabledIntegrations === null || enabledIntegrations === undefined) {
+      // null 或 undefined 表示全部启用
+      return customIntegrations;
+    }
+    // 过滤出启用的扩展
+    return customIntegrations.filter(integration => enabledIntegrations.includes(integration.id));
+  }, [customIntegrations, enabledIntegrations]);
   
   // 生成稳定的 items ID 列表
   const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
@@ -326,6 +370,133 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     };
   }, []);
 
+  // 处理分享（复制链接）
+  const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {
+    e.stopPropagation(); // 阻止触发卡片点击
+    
+    if (item.link) {
+      navigator.clipboard.writeText(item.link).then(() => {
+        setCopiedItemId(item.id);
+        setTimeout(() => {
+          setCopiedItemId(null);
+        }, COPY_TOAST_DURATION);
+      }).catch(err => {
+        console.error('Failed to copy link:', err);
+      });
+    }
+  }, []);
+
+  // 处理扩展执行
+  const handleExecuteIntegration = useCallback(async (e: React.MouseEvent, item: FeedItem, integration: CustomIntegration) => {
+    e.stopPropagation(); // 阻止触发卡片点击
+    
+    setExecutingIntegration(integration.id);
+    
+    // 清除之前的定时器
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    
+    try {
+      const result = await executeIntegration(integration, {
+        url: item.link || '',
+        title: item.title || '',
+      });
+      
+      // 只有 Webhook 类型才记录历史和显示 toast
+      if (integration.type === 'webhook') {
+        const historyEntry = {
+          id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          type: result.success ? 'success' as const : 'error' as const,
+          integrationName: integration.name,
+          message: result.success ? `${integration.name} 执行成功` : `${integration.name} 执行失败`,
+          detail: result.success 
+            ? (result.response 
+                ? (typeof result.response === 'string' 
+                    ? result.response 
+                    : JSON.stringify(result.response, null, 2))
+                : undefined)
+            : result.message,
+          timestamp: new Date(),
+        };
+        
+        // 通过回调添加到历史记录
+        onAddExecutionHistory?.(historyEntry);
+        
+        setToast({ 
+          type: historyEntry.type, 
+          message: historyEntry.message,
+          detail: historyEntry.detail
+        });
+        setToastExpanded(false);
+        
+        // 5秒后自动关闭（仅在未展开时）
+        toastTimerRef.current = setTimeout(() => {
+          setToast(prev => {
+            // 只有在未展开时才自动关闭
+            if (!toastExpanded) {
+              return null;
+            }
+            return prev;
+          });
+        }, 5000);
+      }
+    } catch (error) {
+      // 只有 Webhook 类型才记录错误历史和显示 toast
+      if (integration.type === 'webhook') {
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        const historyEntry = {
+          id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          type: 'error' as const,
+          integrationName: integration.name,
+          message: `${integration.name} 执行失败`,
+          detail: errorMessage,
+          timestamp: new Date(),
+        };
+        
+        // 通过回调添加到历史记录
+        onAddExecutionHistory?.(historyEntry);
+        
+        setToast({ 
+          type: 'error', 
+          message: historyEntry.message,
+          detail: errorMessage
+        });
+        setToastExpanded(false);
+        
+        toastTimerRef.current = setTimeout(() => {
+          if (!toastExpanded) {
+            setToast(null);
+          }
+        }, 5000);
+      }
+    }
+    
+    setTimeout(() => {
+      setExecutingIntegration(null);
+    }, 500);
+  }, [toastExpanded, onAddExecutionHistory]);
+  
+  // 展开 Toast 时停止自动关闭
+  const handleExpandToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToastExpanded(true);
+  }, []);
+  
+  // 关闭 Toast
+  const handleCloseToast = useCallback(() => {
+    setToast(null);
+    setToastExpanded(false);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+  }, []);
+
   // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
   const breakpointColumns = {
     default: columnsCount,
@@ -338,6 +509,93 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
   return (
     <div ref={containerRef}>
+      {/* Toast 通知 */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-md">
+          <div className={`rounded-lg shadow-lg overflow-hidden ${
+            toast.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' 
+              : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+          }`}>
+            {/* 折叠状态 */}
+            <div className="flex items-center gap-3 p-3">
+              {toast.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span className={`text-sm font-medium flex-1 ${
+                toast.type === 'success' 
+                  ? 'text-green-800 dark:text-green-200' 
+                  : 'text-red-800 dark:text-red-200'
+              }`}>
+                {toast.message}
+              </span>
+              <div className="flex items-center gap-1">
+                {toast.detail && !toastExpanded && (
+                  <button 
+                    onClick={handleExpandToast}
+                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
+                      toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}
+                    title="查看详情"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                )}
+                {toastExpanded && (
+                  <button 
+                    onClick={() => setToastExpanded(false)}
+                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
+                      toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}
+                    title="收起"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                )}
+                <button 
+                  onClick={handleCloseToast}
+                  className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
+                    toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}
+                  title="关闭"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* 展开的详情 */}
+            {toastExpanded && toast.detail && (
+              <div className={`border-t px-3 pb-3 ${
+                toast.type === 'success'
+                  ? 'border-green-200 dark:border-green-800'
+                  : 'border-red-200 dark:border-red-800'
+              }`}>
+                <pre className={`mt-2 text-xs overflow-auto max-h-48 p-2 rounded whitespace-pre-wrap break-all ${
+                  toast.type === 'success'
+                    ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                }`}>
+                  {toast.detail}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       <Masonry
         breakpointCols={breakpointColumns}
         className="flex -ml-4 w-auto"
@@ -358,6 +616,53 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             
             {/* Hover Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            
+            {/* Hover Toolbar */}
+            <div className="absolute bottom-0 right-0 left-0 flex justify-end gap-1 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Custom Integrations */}
+              {filteredIntegrations.map((integration) => (
+                <button
+                  key={integration.id}
+                  onClick={(e) => handleExecuteIntegration(e, item, integration)}
+                  className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  title={integration.name}
+                >
+                  {executingIntegration === integration.id ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : integration.icon ? (
+                    <IntegrationIconComponent icon={integration.icon} className="w-4 h-4" />
+                  ) : integration.type === 'url' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+              
+              {/* Share Button */}
+              <button
+                onClick={(e) => handleShare(e, item)}
+                className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                title="复制链接"
+              >
+                {copiedItemId === item.id ? (
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Content */}

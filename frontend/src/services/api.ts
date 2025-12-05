@@ -1,4 +1,4 @@
-import type { Feed, FeedItem, ItemsResponse } from '../types';
+import type { Feed, FeedItem, ItemsResponse, CustomIntegration } from '../types';
 
 const API_BASE = '/api';
 
@@ -18,11 +18,15 @@ export const api = {
     return handleResponse<Feed[]>(response);
   },
 
-  async createFeed(url: string, category?: string): Promise<Feed> {
+  async createFeed(url: string, category?: string, enabledIntegrations?: string[] | null): Promise<Feed> {
+    const payload: Record<string, unknown> = { url };
+    if (category !== undefined) payload.category = category;
+    if (enabledIntegrations !== undefined) payload.enabled_integrations = enabledIntegrations;
+    
     const response = await fetch(`${API_BASE}/feeds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, category }),
+      body: JSON.stringify(payload),
     });
     return handleResponse<Feed>(response);
   },
@@ -37,11 +41,18 @@ export const api = {
     }
   },
 
-  async updateFeed(id: string, data: { title?: string; url?: string; category?: string }): Promise<Feed> {
+  async updateFeed(id: string, data: { title?: string; url?: string; category?: string; enabledIntegrations?: string[] | null }): Promise<Feed> {
+    // Convert enabledIntegrations to snake_case for backend
+    const payload: Record<string, unknown> = {};
+    if (data.title !== undefined) payload.title = data.title;
+    if (data.url !== undefined) payload.url = data.url;
+    if (data.category !== undefined) payload.category = data.category;
+    if (data.enabledIntegrations !== undefined) payload.enabled_integrations = data.enabledIntegrations;
+    
     const response = await fetch(`${API_BASE}/feeds/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     return handleResponse<Feed>(response);
   },
@@ -119,5 +130,58 @@ export const api = {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; thumbnail_image: string }>(response);
+  },
+
+  // Integrations
+  async getIntegrations(): Promise<CustomIntegration[]> {
+    const response = await fetch(`${API_BASE}/integrations`);
+    return handleResponse<CustomIntegration[]>(response);
+  },
+
+  async createIntegration(data: Omit<CustomIntegration, 'id' | 'createdAt' | 'updatedAt'>): Promise<CustomIntegration> {
+    const response = await fetch(`${API_BASE}/integrations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        type: data.type,
+        icon: data.icon,
+        url: data.url,
+        webhook_url: data.webhookUrl,
+        webhook_method: data.webhookMethod,
+        webhook_body: data.webhookBody,
+        sort_order: data.sortOrder,
+      }),
+    });
+    return handleResponse<CustomIntegration>(response);
+  },
+
+  async updateIntegration(id: string, data: Partial<CustomIntegration>): Promise<CustomIntegration> {
+    const payload: Record<string, unknown> = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.type !== undefined) payload.type = data.type;
+    if (data.icon !== undefined) payload.icon = data.icon;
+    if (data.url !== undefined) payload.url = data.url;
+    if (data.webhookUrl !== undefined) payload.webhook_url = data.webhookUrl;
+    if (data.webhookMethod !== undefined) payload.webhook_method = data.webhookMethod;
+    if (data.webhookBody !== undefined) payload.webhook_body = data.webhookBody;
+    if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
+
+    const response = await fetch(`${API_BASE}/integrations/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<CustomIntegration>(response);
+  },
+
+  async deleteIntegration(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/integrations/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
   },
 };

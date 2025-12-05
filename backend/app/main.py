@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus, Integration
-from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse
+from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, FeedBriefResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse
 from app.rss_parser import parse_rss_feed, download_and_process_image
 from app.favicon_fetcher import get_favicon_url
 
@@ -691,6 +691,24 @@ def get_items(
         # Use is_read field directly (support both all view and single feed view)
         is_unread = not item.is_read
         
+        # Parse feed's enabled_integrations
+        feed_enabled_integrations = None
+        if item.feed and item.feed.enabled_integrations:
+            try:
+                feed_enabled_integrations = json.loads(item.feed.enabled_integrations)
+            except:
+                feed_enabled_integrations = None
+        
+        # Create FeedBriefResponse for proper camelCase conversion
+        feed_brief = None
+        if item.feed:
+            feed_brief = FeedBriefResponse(
+                title=item.feed.title,
+                category=item.feed.category,
+                favicon=item.feed.favicon,
+                enabled_integrations=feed_enabled_integrations,
+            )
+        
         item_dict = {
             "id": item.id,
             "feed_id": item.feed_id,
@@ -705,11 +723,7 @@ def get_items(
             "published_at": item.published_at,
             "created_at": item.created_at,
             "is_unread": is_unread,
-            "feed": {
-                "title": item.feed.title,
-                "category": item.feed.category,
-                "favicon": item.feed.favicon,
-            } if item.feed else None,
+            "feed": feed_brief,
         }
         result_items.append(FeedItemResponse(**item_dict))
     

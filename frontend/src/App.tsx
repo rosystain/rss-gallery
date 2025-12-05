@@ -109,16 +109,6 @@ function App() {
     return imageWidth;
   };
 
-  // Get current feed's enabled integrations
-  const getCurrentEnabledIntegrations = (): string[] | null => {
-    if (!selectedFeed) {
-      // 如果是"全部"视图，返回 null（显示所有扩展）
-      return null;
-    }
-    const feed = feeds.find(f => f.id === selectedFeed);
-    return feed?.enabledIntegrations ?? null;
-  };
-
   const setCurrentImageWidth = (width: number) => {
     if (selectedFeed) {
       setFeedImageWidths(prev => ({ ...prev, [selectedFeed]: width }));
@@ -1183,7 +1173,6 @@ function App() {
                 onItemHoverRead={handleItemHoverRead}
                 onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
                 refreshIntegrationsTrigger={integrationsRefreshTrigger}
-                enabledIntegrations={getCurrentEnabledIntegrations()}
               />
               
               {/* Load More Button */}
@@ -1226,7 +1215,6 @@ function App() {
         onClose={() => setIsModalOpen(false)}
         onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
         refreshIntegrationsTrigger={integrationsRefreshTrigger}
-        enabledIntegrations={getCurrentEnabledIntegrations()}
       />
 
       {/* Integration Settings Modal */}

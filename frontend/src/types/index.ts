@@ -37,6 +37,7 @@ export interface FeedItem {
     title: string;
     category?: string;
     favicon?: string;
+    enabledIntegrations?: string[] | null;  // 该 feed 启用的集成 ID 列表
   };
 }
 

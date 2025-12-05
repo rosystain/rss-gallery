@@ -19,10 +19,9 @@ interface ItemModalProps {
     timestamp: Date;
   }) => void;
   refreshIntegrationsTrigger?: number;
-  enabledIntegrations?: string[] | null;
 }
 
-export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory, refreshIntegrationsTrigger, enabledIntegrations }: ItemModalProps) {
+export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory, refreshIntegrationsTrigger }: ItemModalProps) {
   const [copied, setCopied] = useState(false);
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]);
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null);
@@ -41,12 +40,14 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
     loadIntegrations();
   }, [loadIntegrations, refreshIntegrationsTrigger]);
 
-  // 根据当前订阅的 enabledIntegrations 过滤扩展列表
+  // 根据 item 所属 feed 的 enabledIntegrations 过滤集成列表
   const filteredIntegrations = (() => {
-    if (enabledIntegrations === null || enabledIntegrations === undefined) {
-      return customIntegrations;
+    const itemEnabledIntegrations = item?.feed?.enabledIntegrations;
+    if (itemEnabledIntegrations === undefined || itemEnabledIntegrations === null || itemEnabledIntegrations.length === 0) {
+      // 未设置或空数组表示不显示任何集成
+      return [];
     }
-    return customIntegrations.filter(integration => enabledIntegrations.includes(integration.id));
+    return customIntegrations.filter(integration => itemEnabledIntegrations.includes(integration.id));
   })();
 
   // 处理复制链接

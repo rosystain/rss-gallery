@@ -19,6 +19,24 @@ class FeedUpdate(BaseModel):
     enabled_integrations: Optional[List[str]] = None  # None 表示不修改，空列表表示禁用所有
 
 
+class FeedBriefResponse(BaseModel):
+    """用于 FeedItem 嵌套的简化 Feed 信息"""
+    title: str
+    category: Optional[str] = None
+    favicon: Optional[str] = None
+    enabled_integrations: Optional[List[str]] = None  # 该 feed 启用的集成 ID 列表
+    
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+        
+        # Convert snake_case to camelCase for JSON
+        alias_generator = lambda string: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(string.split('_'))
+        )
+
+
 class FeedItemResponse(BaseModel):
     id: str
     feed_id: str
@@ -32,7 +50,7 @@ class FeedItemResponse(BaseModel):
     categories: Optional[str]
     published_at: datetime
     created_at: datetime
-    feed: Optional[dict] = None
+    feed: Optional[FeedBriefResponse] = None
     is_unread: Optional[bool] = None
 
     class Config:

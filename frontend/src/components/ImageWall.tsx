@@ -102,8 +102,7 @@ interface ImageWallProps {
     detail?: string;
     timestamp: Date;
   }) => void; // 添加执行历史记录的回调
-  refreshIntegrationsTrigger?: number; // 用于触发刷新扩展列表
-  enabledIntegrations?: string[] | null; // 当前订阅启用的扩展ID列表，null表示全部启用
+  refreshIntegrationsTrigger?: number; // 用于触发刷新集成列表
 }
 
 // 单个图片卡片组件，处理加载失败和重试逻辑
@@ -204,7 +203,7 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   );
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger, enabledIntegrations }: ImageWallProps) {
+export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger }: ImageWallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
   const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
@@ -230,15 +229,22 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     loadIntegrations();
   }, [loadIntegrations, refreshIntegrationsTrigger]);
   
-  // 根据当前订阅的 enabledIntegrations 过滤扩展列表
-  const filteredIntegrations = useMemo(() => {
-    if (enabledIntegrations === null || enabledIntegrations === undefined) {
-      // null 或 undefined 表示全部启用
-      return customIntegrations;
+  // 根据 item 的 feed 设置获取该 item 应该显示的集成列表
+  const getItemIntegrations = useCallback((item: FeedItem): CustomIntegration[] => {
+    // 获取该 item 所属 feed 的 enabledIntegrations
+    const itemEnabledIntegrations = item.feed?.enabledIntegrations;
+    
+    if (itemEnabledIntegrations === undefined) {
+      // feed 信息不完整，不显示任何集成
+      return [];
     }
-    // 过滤出启用的扩展
-    return customIntegrations.filter(integration => enabledIntegrations.includes(integration.id));
-  }, [customIntegrations, enabledIntegrations]);
+    if (itemEnabledIntegrations === null || itemEnabledIntegrations.length === 0) {
+      // null 或空数组表示未启用任何集成
+      return [];
+    }
+    // 过滤出启用的集成
+    return customIntegrations.filter(integration => itemEnabledIntegrations.includes(integration.id));
+  }, [customIntegrations]);
   
   // 生成稳定的 items ID 列表
   const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
@@ -620,7 +626,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             {/* Hover Toolbar */}
             <div className="absolute bottom-0 right-0 left-0 flex justify-end gap-1 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
               {/* Custom Integrations */}
-              {filteredIntegrations.map((integration) => (
+              {getItemIntegrations(item).map((integration) => (
                 <button
                   key={integration.id}
                   onClick={(e) => handleExecuteIntegration(e, item, integration)}

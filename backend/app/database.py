@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, text, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -89,5 +89,29 @@ def get_db():
         db.close()
 
 
+def migrate_db():
+    """自动迁移数据库，添加缺失的列"""
+    inspector = inspect(engine)
+    
+    with engine.connect() as conn:
+        # 检查 feeds 表
+        if 'feeds' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('feeds')]
+            
+            # 添加 enabled_integrations 列
+            if 'enabled_integrations' not in columns:
+                print("Migrating: Adding enabled_integrations column to feeds table...")
+                conn.execute(text("ALTER TABLE feeds ADD COLUMN enabled_integrations TEXT"))
+                conn.commit()
+                print("Migration complete: enabled_integrations column added")
+        
+        # 检查 integrations 表是否存在，不存在则创建
+        if 'integrations' not in inspector.get_table_names():
+            print("Migrating: Creating integrations table...")
+            Base.metadata.tables['integrations'].create(bind=engine)
+            print("Migration complete: integrations table created")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    migrate_db()

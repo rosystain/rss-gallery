@@ -211,6 +211,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null); // 显示复制成功提示的item
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]); // 自定义扩展列表
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null); // 正在执行的扩展 ID
+  const [favoritingItemId, setFavoritingItemId] = useState<string | null>(null); // 正在切换收藏状态的 item ID
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
@@ -391,6 +392,32 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       });
     }
   }, []);
+
+  // 处理收藏切换
+  const handleToggleFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem) => {
+    e.stopPropagation(); // 阻止触发卡片点击
+    
+    setFavoritingItemId(item.id);
+    
+    // 乐观更新：立即更新UI
+    const newFavoriteState = !item.isFavorite;
+    onItemUpdated?.(item.id, { isFavorite: newFavoriteState });
+    
+    try {
+      const result = await api.toggleFavorite(item.id);
+      // API 返回的状态应该与我们的乐观更新一致
+      if (result.success && result.is_favorite !== newFavoriteState) {
+        // 如果不一致，使用服务器返回的状态
+        onItemUpdated?.(item.id, { isFavorite: result.is_favorite });
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // 失败时回滚
+      onItemUpdated?.(item.id, { isFavorite: item.isFavorite });
+    } finally {
+      setFavoritingItemId(null);
+    }
+  }, [onItemUpdated]);
 
   // 处理扩展执行
   const handleExecuteIntegration = useCallback(async (e: React.MouseEvent, item: FeedItem, integration: CustomIntegration) => {
@@ -651,6 +678,31 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                   )}
                 </button>
               ))}
+              
+              {/* Favorite Button */}
+              <button
+                onClick={(e) => handleToggleFavorite(e, item)}
+                disabled={favoritingItemId === item.id}
+                className={`p-1.5 hover:bg-white/20 text-white rounded-lg transition-all ${
+                  favoritingItemId === item.id ? 'scale-110' : ''
+                }`}
+                title={item.isFavorite ? "取消收藏" : "收藏"}
+              >
+                {favoritingItemId === item.id ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : item.isFavorite ? (
+                  <svg className="w-4 h-4 text-yellow-400 fill-yellow-400 transition-all duration-300 ease-out" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 transition-all duration-300 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                )}
+              </button>
               
               {/* Share Button */}
               <button

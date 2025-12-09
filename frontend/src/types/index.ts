@@ -33,6 +33,7 @@ export interface FeedItem {
   createdAt: string;
   updatedAt: string;
   isUnread?: boolean;
+  isFavorite?: boolean;
   feed?: {
     title: string;
     category?: string;

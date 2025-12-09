@@ -160,13 +160,23 @@ function App() {
         // 静默刷新时只请求第一页
         const requestPage = isRefresh ? 1 : page;
         
-        const response = await api.getItems({
-          page: requestPage,
-          limit: itemsPerPage,
-          feedId: selectedFeed || undefined,
-          unreadOnly: currentUnreadFilter,
-          sortBy: sortBy,
-        });
+        let response;
+        if (selectedFeed === 'favorites') {
+          // 获取收藏列表
+          response = await api.getFavorites({
+            page: requestPage,
+            limit: itemsPerPage,
+            sortBy: sortBy,
+          });
+        } else {
+          response = await api.getItems({
+            page: requestPage,
+            limit: itemsPerPage,
+            feedId: selectedFeed || undefined,
+            unreadOnly: currentUnreadFilter,
+            sortBy: sortBy,
+          });
+        }
         
         // 检查版本号，如果已过期则忽略响应
         if (currentVersion !== fetchVersionRef.current) {
@@ -325,6 +335,16 @@ function App() {
           loadFeeds(); // 刷新未读计数
         })
         .catch(err => console.error('Failed to mark item as read:', err));
+    }
+  };
+
+  const handleItemUpdated = (itemId: string, updates: Partial<FeedItem>) => {
+    setItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+    // 如果是当前选中的项目，也更新它
+    if (selectedItem && selectedItem.id === itemId) {
+      setSelectedItem(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
@@ -555,6 +575,24 @@ function App() {
               })()}
             </button>
 
+            {/* Favorites */}
+            <button
+              onClick={() => handleFeedFilter('favorites')}
+              className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between group ${
+                selectedFeed === 'favorites'
+                  ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                  : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
+              }`}
+              title={sidebarCollapsed ? '收藏' : ''}
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <svg className="w-5 h-5 flex-shrink-0" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                {!sidebarCollapsed && <span className="font-medium">收藏</span>}
+              </div>
+            </button>
+
             {/* Feed Items */}
             <div className="mt-4">
               {!sidebarCollapsed && (
@@ -661,9 +699,11 @@ function App() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
-                {selectedFeed 
-                  ? feeds.find(f => f.id === selectedFeed)?.title 
-                  : '全部内容'
+                {selectedFeed === 'favorites'
+                  ? '收藏'
+                  : selectedFeed 
+                    ? feeds.find(f => f.id === selectedFeed)?.title 
+                    : '全部内容'
                 }
               </h2>
               <span className="text-sm text-gray-500 dark:text-dark-text-secondary">
@@ -790,22 +830,24 @@ function App() {
                 )}
               </div>
               
-              {/* Unread Filter Button */}
-              <button
-                onClick={() => setCurrentUnreadFilter(!getCurrentUnreadFilter())}
-                className="p-2 text-gray-500 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
-              >
-                {getCurrentUnreadFilter() ? (
-                  <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20">
-                    <circle cx="10" cy="10" r="7" />
-                  </svg>
-                ) : (
-                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
-                    <circle cx="10" cy="10" r="7" />
-                  </svg>
-                )}
-              </button>
+              {/* Unread Filter Button - hide for favorites */}
+              {selectedFeed !== 'favorites' && (
+                <button
+                  onClick={() => setCurrentUnreadFilter(!getCurrentUnreadFilter())}
+                  className="p-2 text-gray-500 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+                  title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
+                >
+                  {getCurrentUnreadFilter() ? (
+                    <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="10" cy="10" r="7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
+                      <circle cx="10" cy="10" r="7" />
+                    </svg>
+                  )}
+                </button>
+              )}
               
               {/* Theme Toggle */}
               <ThemeToggle />
@@ -831,27 +873,29 @@ function App() {
                 </Menu.Button>
                 
                 <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
-                  <Menu.Item>
-                    {({ active }) => {
-                      const hasUnread = selectedFeed 
-                        ? (feeds.find(f => f.id === selectedFeed)?.unreadCount || 0) > 0
-                        : items.some(item => item.isUnread);
-                      return (
-                        <button
-                          onClick={handleMarkAllAsRead}
-                          disabled={!hasUnread}
-                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                            active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          标记全部已读
-                        </button>
-                      );
-                    }}
-                  </Menu.Item>
+                  {selectedFeed !== 'favorites' && (
+                    <Menu.Item>
+                      {({ active }) => {
+                        const hasUnread = selectedFeed 
+                          ? (feeds.find(f => f.id === selectedFeed)?.unreadCount || 0) > 0
+                          : items.some(item => item.isUnread);
+                        return (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            disabled={!hasUnread}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                              active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            标记全部已读
+                          </button>
+                        );
+                      }}
+                    </Menu.Item>
+                  )}
                   <Menu.Item>
                     {({ active }) => (
                       <button
@@ -867,7 +911,7 @@ function App() {
                       </button>
                     )}
                   </Menu.Item>
-                  {selectedFeed && (
+                  {selectedFeed && selectedFeed !== 'favorites' && (
                     <>
                       <Menu.Item>
                         {({ active }) => {
@@ -1170,6 +1214,7 @@ function App() {
                 columnsCount={getCurrentImageWidth()}
                 onItemViewed={handleItemViewed}
                 viewedItems={viewedItems}
+                onItemUpdated={handleItemUpdated}
                 onItemHoverRead={handleItemHoverRead}
                 onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
                 refreshIntegrationsTrigger={integrationsRefreshTrigger}
@@ -1213,6 +1258,7 @@ function App() {
         item={selectedItem}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onItemUpdated={handleItemUpdated}
         onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}
         refreshIntegrationsTrigger={integrationsRefreshTrigger}
       />

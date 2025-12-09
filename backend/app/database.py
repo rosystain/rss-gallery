@@ -48,6 +48,8 @@ class FeedItem(Base):
     published_at = Column(DateTime, nullable=False)
     is_read = Column(Boolean, default=False)  # 已读状态
     read_at = Column(DateTime)  # 标记已读的时间
+    is_favorite = Column(Boolean, default=False)  # 收藏状态
+    favorited_at = Column(DateTime)  # 标记收藏的时间
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -104,6 +106,24 @@ def migrate_db():
                 conn.execute(text("ALTER TABLE feeds ADD COLUMN enabled_integrations TEXT"))
                 conn.commit()
                 print("Migration complete: enabled_integrations column added")
+        
+        # 检查 feed_items 表
+        if 'feed_items' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('feed_items')]
+            
+            # 添加 is_favorite 列
+            if 'is_favorite' not in columns:
+                print("Migrating: Adding is_favorite column to feed_items table...")
+                conn.execute(text("ALTER TABLE feed_items ADD COLUMN is_favorite BOOLEAN DEFAULT 0"))
+                conn.commit()
+                print("Migration complete: is_favorite column added")
+            
+            # 添加 favorited_at 列
+            if 'favorited_at' not in columns:
+                print("Migrating: Adding favorited_at column to feed_items table...")
+                conn.execute(text("ALTER TABLE feed_items ADD COLUMN favorited_at DATETIME"))
+                conn.commit()
+                print("Migration complete: favorited_at column added")
         
         # 检查 integrations 表是否存在，不存在则创建
         if 'integrations' not in inspector.get_table_names():

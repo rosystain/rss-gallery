@@ -52,6 +52,7 @@ class FeedItemResponse(BaseModel):
     created_at: datetime
     feed: Optional[FeedBriefResponse] = None
     is_unread: Optional[bool] = None
+    is_favorite: Optional[bool] = None
 
     class Config:
         from_attributes = True

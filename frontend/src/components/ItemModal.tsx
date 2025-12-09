@@ -2,6 +2,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { FeedItem, CustomIntegration } from '../types';
+import { api } from '../services/api';
 import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent } from './IntegrationSettings';
 
 // 复制成功提示的显示时间（毫秒）
@@ -121,6 +122,7 @@ interface ItemModalProps {
   item: FeedItem | null;
   isOpen: boolean;
   onClose: () => void;
+  onItemUpdated?: (itemId: string, updates: Partial<FeedItem>) => void;
   onAddExecutionHistory?: (entry: {
     id: string;
     type: 'success' | 'error';
@@ -132,10 +134,11 @@ interface ItemModalProps {
   refreshIntegrationsTrigger?: number;
 }
 
-export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory, refreshIntegrationsTrigger }: ItemModalProps) {
+export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddExecutionHistory, refreshIntegrationsTrigger }: ItemModalProps) {
   const [copied, setCopied] = useState(false);
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]);
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null);
+  const [isFavoriting, setIsFavoriting] = useState(false);
   const [viewerState, setViewerState] = useState<{ images: ImageInfo[]; initialIndex: number } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -240,6 +243,32 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
       });
     }
   }, [item?.link]);
+
+  // 处理收藏切换
+  const handleToggleFavorite = useCallback(async () => {
+    if (!item) return;
+    
+    setIsFavoriting(true);
+    
+    // 乐观更新：立即更新UI
+    const newFavoriteState = !item.isFavorite;
+    onItemUpdated?.(item.id, { isFavorite: newFavoriteState });
+    
+    try {
+      const result = await api.toggleFavorite(item.id);
+      // API 返回的状态应该与我们的乐观更新一致
+      if (result.success && result.is_favorite !== newFavoriteState) {
+        // 如果不一致，使用服务器返回的状态
+        onItemUpdated?.(item.id, { isFavorite: result.is_favorite });
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // 失败时回滚
+      onItemUpdated?.(item.id, { isFavorite: item.isFavorite });
+    } finally {
+      setIsFavoriting(false);
+    }
+  }, [item, onItemUpdated]);
 
   // 处理扩展执行
   const handleExecuteIntegration = useCallback(async (integration: CustomIntegration) => {
@@ -407,6 +436,31 @@ export default function ItemModal({ item, isOpen, onClose, onAddExecutionHistory
                           )}
                         </button>
                       ))}
+                      
+                      {/* Favorite Button */}
+                      <button
+                        onClick={handleToggleFavorite}
+                        disabled={isFavoriting}
+                        title={item.isFavorite ? "取消收藏" : "收藏"}
+                        className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-all text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text ${
+                          isFavoriting ? 'scale-110' : ''
+                        }`}
+                      >
+                        {isFavoriting ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : item.isFavorite ? (
+                          <svg className="w-5 h-5 text-yellow-500 fill-yellow-500 transition-all duration-300 ease-out" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 transition-all duration-300 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                        )}
+                      </button>
                       
                       {/* Copy Link Button */}
                       <button

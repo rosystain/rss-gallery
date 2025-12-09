@@ -517,6 +517,108 @@ def mark_feed_as_read(
     return {"success": True, "last_viewed_at": read_status.last_viewed_at}
 
 
+@app.post("/api/items/{item_id}/favorite")
+def toggle_item_favorite(
+    item_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Toggle favorite status for an item.
+    """
+    item = db.query(FeedItem).filter(FeedItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    # Toggle favorite status
+    item.is_favorite = not item.is_favorite
+    if item.is_favorite:
+        item.favorited_at = datetime.utcnow()
+    else:
+        item.favorited_at = None
+    
+    db.commit()
+    
+    return {"success": True, "is_favorite": item.is_favorite}
+
+
+@app.get("/api/items/favorites", response_model=ItemsListResponse)
+def get_favorite_items(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    sort_by: str = Query('published', regex='^(published|created|favorited)$'),
+    db: Session = Depends(get_db)
+):
+    """Get all favorite items with pagination"""
+    query = db.query(FeedItem).filter(FeedItem.is_favorite == True)
+    
+    # Get total count
+    total = query.count()
+    
+    # Apply sorting
+    if sort_by == 'created':
+        query = query.order_by(FeedItem.created_at.desc())
+    elif sort_by == 'favorited':
+        query = query.order_by(FeedItem.favorited_at.desc())
+    else:  # default to published
+        query = query.order_by(FeedItem.published_at.desc())
+    
+    # Apply pagination
+    skip = (page - 1) * limit
+    items = query.offset(skip).limit(limit).all()
+    
+    # Convert to response format
+    result_items = []
+    for item in items:
+        is_unread = not item.is_read
+        
+        # Parse feed's enabled_integrations
+        feed_enabled_integrations = None
+        if item.feed and item.feed.enabled_integrations:
+            try:
+                feed_enabled_integrations = json.loads(item.feed.enabled_integrations)
+            except:
+                feed_enabled_integrations = None
+        
+        # Create FeedBriefResponse for proper camelCase conversion
+        feed_brief = None
+        if item.feed:
+            feed_brief = FeedBriefResponse(
+                title=item.feed.title,
+                category=item.feed.category,
+                favicon=item.feed.favicon,
+                enabled_integrations=feed_enabled_integrations,
+            )
+        
+        item_dict = {
+            "id": item.id,
+            "feed_id": item.feed_id,
+            "title": item.title,
+            "link": item.link,
+            "description": item.description,
+            "content": item.content,
+            "cover_image": item.cover_image,
+            "thumbnail_image": item.thumbnail_image,
+            "author": item.author,
+            "categories": item.categories,
+            "published_at": item.published_at,
+            "created_at": item.created_at,
+            "is_unread": is_unread,
+            "is_favorite": item.is_favorite,
+            "feed": feed_brief,
+        }
+        result_items.append(FeedItemResponse(**item_dict))
+    
+    has_more = skip + len(items) < total
+    
+    return ItemsListResponse(
+        items=result_items,
+        total=total,
+        page=page,
+        limit=limit,
+        has_more=has_more,
+    )
+
+
 @app.put("/api/feeds/{feed_id}", response_model=FeedResponse)
 def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_db)):
     """Update a feed's URL or category"""
@@ -723,6 +825,7 @@ def get_items(
             "published_at": item.published_at,
             "created_at": item.created_at,
             "is_unread": is_unread,
+            "is_favorite": item.is_favorite,
             "feed": feed_brief,
         }
         result_items.append(FeedItemResponse(**item_dict))

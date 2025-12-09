@@ -132,6 +132,28 @@ export const api = {
     return handleResponse<{ success: boolean; thumbnail_image: string }>(response);
   },
 
+  // Favorites
+  async toggleFavorite(itemId: string): Promise<{ success: boolean; is_favorite: boolean }> {
+    const response = await fetch(`${API_BASE}/items/${itemId}/favorite`, {
+      method: 'POST',
+    });
+    return handleResponse<{ success: boolean; is_favorite: boolean }>(response);
+  },
+
+  async getFavorites(params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: 'published' | 'created' | 'favorited';
+  }): Promise<ItemsResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.set('page', params.page.toString());
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+    if (params?.sortBy) queryParams.set('sort_by', params.sortBy);
+
+    const response = await fetch(`${API_BASE}/items/favorites?${queryParams}`);
+    return handleResponse<ItemsResponse>(response);
+  },
+
   // Integrations
   async getIntegrations(): Promise<CustomIntegration[]> {
     const response = await fetch(`${API_BASE}/integrations`);

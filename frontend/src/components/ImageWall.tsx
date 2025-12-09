@@ -209,14 +209,14 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
   const hoverReadItemsRef = useRef<Set<string>>(new Set()); // 已通过悬浮标记为已读的items
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null); // 显示复制成功提示的item
-  const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]); // 自定义扩展列表
-  const [executingIntegration, setExecutingIntegration] = useState<string | null>(null); // 正在执行的扩展 ID
+  const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]); // 自定义集成列表
+  const [executingIntegration, setExecutingIntegration] = useState<string | null>(null); // 正在执行的集成 ID
   const [favoritingItemId, setFavoritingItemId] = useState<string | null>(null); // 正在切换收藏状态的 item ID
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
   
-  // 加载自定义扩展列表
+  // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
       const integrations = await getCustomIntegrationsAsync();
@@ -419,7 +419,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }
   }, [onItemUpdated]);
 
-  // 处理扩展执行
+  // 处理集成执行
   const handleExecuteIntegration = useCallback(async (e: React.MouseEvent, item: FeedItem, integration: CustomIntegration) => {
     e.stopPropagation(); // 阻止触发卡片点击
     

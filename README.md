@@ -9,7 +9,7 @@
 - 响应式图片墙界面
 - 已读/未读状态管理
 - 按类别和搜索过滤
-- [自定义扩展](docs/custom-integrations.md)（URL 跳转、Webhook）
+- [自定义集成](docs/custom-integrations.md)（URL 跳转、Webhook）
 
 ## Docker 部署
 

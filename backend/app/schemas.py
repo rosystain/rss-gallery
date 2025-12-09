@@ -81,7 +81,7 @@ class FeedResponse(BaseModel):
     items_count: Optional[int] = None
     unread_count: Optional[int] = None
     warning: Optional[str] = None  # 订阅存在问题时的警告信息
-    enabled_integrations: Optional[List[str]] = None  # 启用的扩展ID列表，None表示全部启用
+    enabled_integrations: Optional[List[str]] = None  # 启用的集成ID列表，None表示全部启用
 
     class Config:
         from_attributes = True
@@ -111,7 +111,7 @@ class ItemsListResponse(BaseModel):
         )
 
 
-# 扩展相关 Schema
+# 集成相关 Schema
 class IntegrationBase(BaseModel):
     name: str
     type: str  # 'url' or 'webhook'

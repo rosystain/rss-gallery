@@ -487,7 +487,7 @@ function App() {
     setEditFeedTitle(feed.title);
     setEditFeedEnabledIntegrations(feed.enabledIntegrations ?? []);
     
-    // 加载可用的扩展列表
+    // 加载可用的集成列表
     try {
       const integrations = await getCustomIntegrationsAsync();
       setAvailableIntegrations(integrations);
@@ -668,7 +668,7 @@ function App() {
             onClick={async () => {
               setShowAddFeed(!showAddFeed);
               if (!showAddFeed) {
-                // 打开对话框时加载扩展列表
+                // 打开对话框时加载集成列表
                 try {
                   const integrations = await getCustomIntegrationsAsync();
                   setNewFeedAvailableIntegrations(integrations);
@@ -907,7 +907,7 @@ function App() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
                         </svg>
-                        扩展
+                        集成
                       </button>
                     )}
                   </Menu.Item>
@@ -978,14 +978,14 @@ function App() {
                   />
                 </div>
                 
-                {/* 扩展启用设置 */}
+                {/* 集成启用设置 */}
                 {newFeedAvailableIntegrations.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                      启用的扩展
+                      启用的集成
                     </label>
                     <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-2">
-                      选择要在此订阅的卡片工具栏中显示的扩展
+                      选择要在此订阅的卡片工具栏中显示的集成
                     </p>
                     <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-dark-border rounded-lg p-2">
                       {newFeedAvailableIntegrations.map((integration) => {
@@ -1101,14 +1101,14 @@ function App() {
                   />
                 </div>
                 
-                {/* 扩展启用设置 */}
+                {/* 集成启用设置 */}
                 {availableIntegrations.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                      启用的扩展
+                      启用的集成
                     </label>
                     <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-2">
-                      选择要在此订阅的卡片工具栏中显示的扩展
+                      选择要在此订阅的卡片工具栏中显示的集成
                     </p>
                     <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-dark-border rounded-lg p-2">
                       {availableIntegrations.map((integration) => {

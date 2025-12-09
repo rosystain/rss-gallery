@@ -25,7 +25,7 @@ class Feed(Base):
     last_fetched_at = Column(DateTime)
     last_fetch_error = Column(String)  # 上次抓取失败的错误信息，成功时为 None
     is_active = Column(Boolean, default=True)
-    enabled_integrations = Column(Text)  # JSON 数组，存储启用的扩展 ID，null 表示全部启用
+    enabled_integrations = Column(Text)  # JSON 数组，存储启用的集成 ID，null 表示全部启用
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -67,7 +67,7 @@ class FeedReadStatus(Base):
 
 
 class Integration(Base):
-    """扩展配置"""
+    """集成配置"""
     __tablename__ = "integrations"
 
     id = Column(String, primary_key=True, index=True)

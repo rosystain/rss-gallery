@@ -59,7 +59,7 @@ export function IntegrationIconComponent({ icon, className = 'w-4 h-4' }: { icon
   );
 }
 
-// 预设扩展配置（固定的，不存数据库）
+// 预设集成配置（固定的，不存数据库）
 const defaultPresets: PresetIntegration[] = [
   {
     id: 'obsidian',
@@ -84,7 +84,7 @@ interface IntegrationSettingsProps {
   onClose: () => void;
   executionHistory: ExecutionHistoryEntry[];
   onClearHistory: () => void;
-  onIntegrationsChange?: () => void;  // 当扩展配置变更时的回调
+  onIntegrationsChange?: () => void;  // 当集成配置变更时的回调
 }
 
 export default function IntegrationSettings({ isOpen, onClose, executionHistory, onClearHistory, onIntegrationsChange }: IntegrationSettingsProps) {
@@ -96,7 +96,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
   const [, setIsLoading] = useState(false);
   const [, setIsSaving] = useState(false);
 
-  // 从 API 加载扩展
+  // 从 API 加载集成
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
@@ -107,7 +107,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
     }
   }, [isOpen]);
 
-  // 创建新的自定义扩展
+  // 创建新的自定义集成
   const handleCreateNew = () => {
     const newIntegration: CustomIntegration = {
       id: '',  // 服务端生成
@@ -121,16 +121,16 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
     setIsCreating(true);
   };
 
-  // 编辑扩展
+  // 编辑集成
   const handleEdit = (integration: CustomIntegration) => {
     setEditingIntegration({ ...integration });
     setIsCreating(false);
   };
 
-  // 保存扩展
+  // 保存集成
   const handleSaveIntegration = async () => {
     if (!editingIntegration || !editingIntegration.name.trim()) {
-      alert('请输入扩展名称');
+      alert('请输入集成名称');
       return;
     }
 
@@ -173,9 +173,9 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
     }
   };
 
-  // 删除扩展
+  // 删除集成
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个扩展吗？')) return;
+    if (!confirm('确定要删除这个集成吗？')) return;
     
     try {
       await api.deleteIntegration(id);
@@ -204,7 +204,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">扩展</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">集成</h2>
             <button
               onClick={onClose}
               className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
@@ -224,7 +224,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                   : 'border-transparent text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text'
               }`}
             >
-              扩展
+              集成
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -307,12 +307,12 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
             </div>
           )}
 
-          {/* 扩展 Tab */}
+          {/* 集成 Tab */}
           {activeTab === 'integrations' && (
             <>
-          {/* 预设扩展 */}
+          {/* 预设集成 */}
           <section>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-3">预设扩展</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-3">预设集成</h3>
             <div className="space-y-2">
               {presets.map((preset) => (
                 <div
@@ -334,10 +334,10 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
             </div>
           </section>
 
-          {/* 自定义扩展 */}
+          {/* 自定义集成 */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text">自定义扩展</h3>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text">自定义集成</h3>
               <button
                 onClick={handleCreateNew}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
@@ -349,11 +349,11 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
               </button>
             </div>
 
-            {/* 扩展列表 */}
+            {/* 集成列表 */}
             {customIntegrations.length === 0 && !editingIntegration ? (
               <div className="text-center py-8 text-gray-400 dark:text-dark-text-secondary">
-                <p>暂无自定义扩展</p>
-                <p className="text-sm mt-1">点击"新建"添加自定义扩展</p>
+                <p>暂无自定义集成</p>
+                <p className="text-sm mt-1">点击"新建"添加自定义集成</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -400,7 +400,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
           {editingIntegration && (
             <section className="border-t border-gray-200 dark:border-dark-border pt-6">
               <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-4">
-                {isCreating ? '新建扩展' : '编辑扩展'}
+                {isCreating ? '新建集成' : '编辑集成'}
               </h3>
               
               <div className="space-y-4">
@@ -415,7 +415,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                     onChange={(e) =>
                       setEditingIntegration({ ...editingIntegration, name: e.target.value })
                     }
-                    placeholder="扩展名称"
+                    placeholder="集成名称"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -837,7 +837,7 @@ function processTemplate(template: string, variables: Record<string, string>, au
   });
 }
 
-// 执行扩展动作
+// 执行集成动作
 export async function executeIntegration(
   integration: CustomIntegration,
   variables: { url: string; title: string }
@@ -890,7 +890,7 @@ export async function executeIntegration(
         };
       }
     }
-    return { success: false, message: '未知的扩展类型' };
+    return { success: false, message: '未知的集成类型' };
   } catch (error) {
     console.error('Integration execution failed:', error);
     return { success: false, message: String(error) };

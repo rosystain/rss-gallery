@@ -10,7 +10,7 @@ export interface Feed {
   lastFetchedAt?: string;
   lastFetchError?: string;  // 上次抓取失败的错误信息
   isActive: boolean;
-  enabledIntegrations?: string[] | null;  // 启用的扩展 ID 列表，null 表示全部启用
+  enabledIntegrations?: string[] | null;  // 启用的集成 ID 列表，null 表示全部启用
   createdAt: string;
   updatedAt: string;
   itemsCount?: number;
@@ -50,7 +50,7 @@ export interface ItemsResponse {
   hasMore: boolean;
 }
 
-// 扩展类型
+// 集成类型
 export type IntegrationType = 'url' | 'webhook';
 export type WebhookMethod = 'GET' | 'POST';
 
@@ -77,7 +77,7 @@ export type IntegrationIcon =
   | 'chat'        // 聊天
   | 'lightning';  // 闪电
 
-// 预设扩展（如 Obsidian 等）
+// 预设集成（如 Obsidian 等）
 export interface PresetIntegration {
   id: string;
   name: string;
@@ -86,7 +86,7 @@ export interface PresetIntegration {
   config?: Record<string, string>;
 }
 
-// 自定义扩展
+// 自定义集成
 export interface CustomIntegration {
   id: string;
   name: string;
@@ -103,7 +103,7 @@ export interface CustomIntegration {
   updatedAt: string;
 }
 
-// 扩展
+// 集成
 export interface IntegrationSettings {
   presets: PresetIntegration[];
   custom: CustomIntegration[];

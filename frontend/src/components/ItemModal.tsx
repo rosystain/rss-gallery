@@ -206,7 +206,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     return () => contentEl.removeEventListener('click', handleClick);
   }, [isOpen, item, extractImages]);
 
-  // 加载自定义扩展列表
+  // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
       const integrations = await getCustomIntegrationsAsync();
@@ -270,7 +270,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     }
   }, [item, onItemUpdated]);
 
-  // 处理扩展执行
+  // 处理集成执行
   const handleExecuteIntegration = useCallback(async (integration: CustomIntegration) => {
     if (!item) return;
     

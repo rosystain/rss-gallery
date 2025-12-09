@@ -894,18 +894,18 @@ def refresh_item_image(item_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"Failed to refresh image: {str(e)}")
 
 
-# ==================== 扩展 API ====================
+# ==================== 集成 API ====================
 
 @app.get("/api/integrations", response_model=list[IntegrationResponse])
 def get_integrations(db: Session = Depends(get_db)):
-    """获取所有扩展配置"""
+    """获取所有集成配置"""
     integrations = db.query(Integration).order_by(Integration.sort_order, Integration.created_at).all()
     return integrations
 
 
 @app.post("/api/integrations", response_model=IntegrationResponse)
 def create_integration(integration: IntegrationCreate, db: Session = Depends(get_db)):
-    """创建新的扩展"""
+    """创建新的集成"""
     db_integration = Integration(
         id=f"int_{uuid.uuid4().hex[:12]}",
         name=integration.name,
@@ -925,7 +925,7 @@ def create_integration(integration: IntegrationCreate, db: Session = Depends(get
 
 @app.get("/api/integrations/{integration_id}", response_model=IntegrationResponse)
 def get_integration(integration_id: str, db: Session = Depends(get_db)):
-    """获取单个扩展配置"""
+    """获取单个集成配置"""
     integration = db.query(Integration).filter(Integration.id == integration_id).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
@@ -934,7 +934,7 @@ def get_integration(integration_id: str, db: Session = Depends(get_db)):
 
 @app.put("/api/integrations/{integration_id}", response_model=IntegrationResponse)
 def update_integration(integration_id: str, integration: IntegrationUpdate, db: Session = Depends(get_db)):
-    """更新扩展配置"""
+    """更新集成配置"""
     db_integration = db.query(Integration).filter(Integration.id == integration_id).first()
     if not db_integration:
         raise HTTPException(status_code=404, detail="Integration not found")
@@ -950,7 +950,7 @@ def update_integration(integration_id: str, integration: IntegrationUpdate, db: 
 
 @app.delete("/api/integrations/{integration_id}")
 def delete_integration(integration_id: str, db: Session = Depends(get_db)):
-    """删除扩展配置"""
+    """删除集成配置"""
     db_integration = db.query(Integration).filter(Integration.id == integration_id).first()
     if not db_integration:
         raise HTTPException(status_code=404, detail="Integration not found")

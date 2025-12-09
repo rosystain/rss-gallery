@@ -77,13 +77,16 @@ export type IntegrationIcon =
   | 'chat'        // 聊天
   | 'lightning';  // 闪电
 
-// 预设集成（如 Obsidian 等）
+// 预设集成（如 Obsidian、Hentai Assistant 等）
 export interface PresetIntegration {
   id: string;
-  name: string;
-  icon: string;
+  name?: string;  // 可选，用于从默认配置获取
+  icon?: string;  // 可选，用于从默认配置获取
   enabled: boolean;
   config?: Record<string, string>;
+  apiUrl?: string;  // API 基础 URL（用于私人集成）
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 自定义集成

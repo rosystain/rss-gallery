@@ -1,4 +1,4 @@
-import type { Feed, FeedItem, ItemsResponse, CustomIntegration } from '../types';
+import type { Feed, FeedItem, ItemsResponse, CustomIntegration, PresetIntegration } from '../types';
 
 const API_BASE = '/api';
 
@@ -205,5 +205,30 @@ export const api = {
       const errorText = await response.text().catch(() => 'Unknown error');
       throw new Error(`API Error (${response.status}): ${errorText}`);
     }
+  },
+
+  // Preset Integrations
+  async getPresetIntegrations(): Promise<PresetIntegration[]> {
+    const response = await fetch(`${API_BASE}/preset-integrations`);
+    return handleResponse<PresetIntegration[]>(response);
+  },
+
+  async getPresetIntegration(id: string): Promise<PresetIntegration> {
+    const response = await fetch(`${API_BASE}/preset-integrations/${id}`);
+    return handleResponse<PresetIntegration>(response);
+  },
+
+  async updatePresetIntegration(id: string, data: Partial<PresetIntegration>): Promise<PresetIntegration> {
+    const payload: Record<string, unknown> = {};
+    if (data.enabled !== undefined) payload.enabled = data.enabled;
+    if (data.apiUrl !== undefined) payload.api_url = data.apiUrl;
+    if (data.config !== undefined) payload.config = data.config;
+
+    const response = await fetch(`${API_BASE}/preset-integrations/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<PresetIntegration>(response);
   },
 };

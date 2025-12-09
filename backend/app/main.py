@@ -9,8 +9,8 @@ import json
 import os
 from datetime import datetime
 
-from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus, Integration
-from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, FeedBriefResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse
+from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus, Integration, PresetIntegration
+from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, FeedBriefResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse, PresetIntegrationUpdate, PresetIntegrationResponse
 from app.rss_parser import parse_rss_feed, download_and_process_image
 from app.favicon_fetcher import get_favicon_url
 
@@ -958,6 +958,83 @@ def delete_integration(integration_id: str, db: Session = Depends(get_db)):
     db.delete(db_integration)
     db.commit()
     return {"success": True}
+
+
+# ========== 预设集成 API ==========
+
+@app.get("/api/preset-integrations", response_model=list[PresetIntegrationResponse])
+def get_preset_integrations(db: Session = Depends(get_db)):
+    """获取所有预设集成配置"""
+    presets = db.query(PresetIntegration).all()
+    
+    # 将 config JSON 字符串解析为 dict
+    result = []
+    for preset in presets:
+        preset_dict = {
+            "id": preset.id,
+            "enabled": preset.enabled,
+            "api_url": preset.api_url,
+            "config": json.loads(preset.config) if preset.config else None,
+            "created_at": preset.created_at,
+            "updated_at": preset.updated_at,
+        }
+        result.append(preset_dict)
+    
+    return result
+
+
+@app.get("/api/preset-integrations/{preset_id}", response_model=PresetIntegrationResponse)
+def get_preset_integration(preset_id: str, db: Session = Depends(get_db)):
+    """获取指定预设集成配置"""
+    preset = db.query(PresetIntegration).filter(PresetIntegration.id == preset_id).first()
+    if not preset:
+        raise HTTPException(status_code=404, detail="Preset integration not found")
+    
+    return {
+        "id": preset.id,
+        "enabled": preset.enabled,
+        "api_url": preset.api_url,
+        "config": json.loads(preset.config) if preset.config else None,
+        "created_at": preset.created_at,
+        "updated_at": preset.updated_at,
+    }
+
+
+@app.put("/api/preset-integrations/{preset_id}", response_model=PresetIntegrationResponse)
+def update_preset_integration(preset_id: str, update: PresetIntegrationUpdate, db: Session = Depends(get_db)):
+    """更新预设集成配置（不存在则创建）"""
+    preset = db.query(PresetIntegration).filter(PresetIntegration.id == preset_id).first()
+    
+    if not preset:
+        # 不存在则创建
+        preset = PresetIntegration(
+            id=preset_id,
+            enabled=update.enabled if update.enabled is not None else False,
+            api_url=update.api_url,
+            config=json.dumps(update.config) if update.config else None,
+        )
+        db.add(preset)
+    else:
+        # 存在则更新
+        if update.enabled is not None:
+            preset.enabled = update.enabled
+        if update.api_url is not None:
+            preset.api_url = update.api_url
+        if update.config is not None:
+            preset.config = json.dumps(update.config)
+        preset.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(preset)
+    
+    return {
+        "id": preset.id,
+        "enabled": preset.enabled,
+        "api_url": preset.api_url,
+        "config": json.loads(preset.config) if preset.config else None,
+        "created_at": preset.created_at,
+        "updated_at": preset.updated_at,
+    }
 
 
 # Serve frontend static files (only in production/Docker)

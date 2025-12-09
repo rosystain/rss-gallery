@@ -159,3 +159,29 @@ class IntegrationResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+
+
+# ========== 预设集成相关 Schema ==========
+
+class PresetIntegrationUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    api_url: Optional[str] = None
+    config: Optional[dict] = None
+
+
+class PresetIntegrationResponse(BaseModel):
+    id: str
+    enabled: bool
+    api_url: Optional[str]
+    config: Optional[dict]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+        
+        alias_generator = lambda string: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(string.split('_'))
+        )

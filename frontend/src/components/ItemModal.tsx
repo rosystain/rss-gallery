@@ -1,9 +1,9 @@
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { FeedItem, CustomIntegration } from '../types';
+import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
-import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent } from './IntegrationSettings';
+import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction } from './IntegrationSettings';
 
 // 复制成功提示的显示时间（毫秒）
 const COPY_TOAST_DURATION = 2000;
@@ -137,7 +137,9 @@ interface ItemModalProps {
 export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddExecutionHistory, refreshIntegrationsTrigger }: ItemModalProps) {
   const [copied, setCopied] = useState(false);
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]);
+  const [presetActions, setPresetActions] = useState<PresetIntegration[]>([]);
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null);
+  const [executingPreset, setExecutingPreset] = useState<string | null>(null);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [viewerState, setViewerState] = useState<{ images: ImageInfo[]; initialIndex: number } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -219,6 +221,27 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
   useEffect(() => {
     loadIntegrations();
   }, [loadIntegrations, refreshIntegrationsTrigger]);
+
+  // 加载预设集成 actions
+  useEffect(() => {
+    if (!item?.link) {
+      setPresetActions([]);
+      return;
+    }
+
+    // 从 API 获取预设集成配置
+    const loadPresetActions = async () => {
+      try {
+        const presets = await api.getPresetIntegrations();
+        const availableActions = getPresetActions(presets, item.link);
+        setPresetActions(availableActions);
+      } catch (err) {
+        console.error('Failed to load preset actions:', err);
+      }
+    };
+
+    loadPresetActions();
+  }, [item?.link, refreshIntegrationsTrigger]);
 
   // 根据 item 所属 feed 的 enabledIntegrations 过滤集成列表
   const filteredIntegrations = (() => {
@@ -319,7 +342,54 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     
     setTimeout(() => {
       setExecutingIntegration(null);
-    }, 500);
+    }, 1000);
+  }, [item, onAddExecutionHistory]);
+
+  // 处理预设集成 action 执行
+  const handleExecutePresetAction = useCallback(async (preset: PresetIntegration) => {
+    if (!item) return;
+    
+    setExecutingPreset(preset.id);
+    
+    try {
+      const result = await executePresetAction(preset, {
+        url: item.link || '',
+        title: item.title || '',
+      });
+      
+      const historyEntry = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        type: result.success ? 'success' as const : 'error' as const,
+        integrationName: preset.name,
+        message: result.success ? `${preset.name} 执行成功` : `${preset.name} 执行失败`,
+        detail: result.success 
+          ? (result.response 
+              ? (typeof result.response === 'string' 
+                  ? result.response 
+                  : JSON.stringify(result.response, null, 2))
+              : undefined)
+          : result.message,
+        timestamp: new Date(),
+      };
+      
+      onAddExecutionHistory?.(historyEntry);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const historyEntry = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        type: 'error' as const,
+        integrationName: preset.name,
+        message: `${preset.name} 执行失败`,
+        detail: errorMessage,
+        timestamp: new Date(),
+      };
+      
+      onAddExecutionHistory?.(historyEntry);
+    }
+    
+    setTimeout(() => {
+      setExecutingPreset(null);
+    }, 1000);
   }, [item, onAddExecutionHistory]);
 
   if (!item) return null;
@@ -410,6 +480,31 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
 
                     {/* Right side: Share & Actions Toolbar */}
                     <div className="flex items-center gap-1">
+                      {/* Preset Actions */}
+                      {presetActions.map((preset) => (
+                        <button
+                          key={preset.id}
+                          onClick={() => handleExecutePresetAction(preset)}
+                          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text"
+                          title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
+                        >
+                          {executingPreset === preset.id ? (
+                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : preset.icon === 'hentai-assistant' ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                      
                       {/* Custom Integrations */}
                       {filteredIntegrations.map((integration) => (
                         <button

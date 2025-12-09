@@ -83,6 +83,18 @@ class Integration(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class PresetIntegration(Base):
+    """预设集成配置（如 Hentai Assistant）"""
+    __tablename__ = "preset_integrations"
+
+    id = Column(String, primary_key=True, index=True)  # 例如: 'hentai-assistant'
+    enabled = Column(Boolean, default=False)
+    api_url = Column(String)  # API 基础 URL
+    config = Column(Text)  # JSON 字符串，存储其他配置
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -130,6 +142,12 @@ def migrate_db():
             print("Migrating: Creating integrations table...")
             Base.metadata.tables['integrations'].create(bind=engine)
             print("Migration complete: integrations table created")
+        
+        # 检查 preset_integrations 表是否存在，不存在则创建
+        if 'preset_integrations' not in inspector.get_table_names():
+            print("Migrating: Creating preset_integrations table...")
+            Base.metadata.tables['preset_integrations'].create(bind=engine)
+            print("Migration complete: preset_integrations table created")
 
 
 def init_db():

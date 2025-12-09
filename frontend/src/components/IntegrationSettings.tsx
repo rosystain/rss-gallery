@@ -62,11 +62,20 @@ export function IntegrationIconComponent({ icon, className = 'w-4 h-4' }: { icon
 // 预设集成配置（固定的，不存数据库）
 const defaultPresets: PresetIntegration[] = [
   {
-    id: 'obsidian',
-    name: 'Obsidian',
-    icon: 'obsidian',
+    id: 'hentai-assistant',
+    name: 'Hentai Assistant',
+    icon: 'hentai-assistant',
     enabled: false,
+    apiUrl: '',
   },
+];
+
+// Hentai Assistant 支持的域名列表
+const HENTAI_ASSISTANT_DOMAINS = [
+  'e-hentai.org',
+  'exhentai.org',
+  'hdoujin.org',
+  'nhentai.net',
 ];
 
 // 执行历史记录类型
@@ -88,20 +97,43 @@ interface IntegrationSettingsProps {
 }
 
 export default function IntegrationSettings({ isOpen, onClose, executionHistory, onClearHistory, onIntegrationsChange }: IntegrationSettingsProps) {
-  const [presets] = useState<PresetIntegration[]>(defaultPresets);
+  const [presets, setPresets] = useState<PresetIntegration[]>(defaultPresets);
   const [activeTab, setActiveTab] = useState<'integrations' | 'history'>('integrations');
   const [customIntegrations, setCustomIntegrations] = useState<CustomIntegration[]>([]);
   const [editingIntegration, setEditingIntegration] = useState<CustomIntegration | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [, setIsLoading] = useState(false);
   const [, setIsSaving] = useState(false);
+  const [testingApi, setTestingApi] = useState<string | null>(null);  // 正在测试的集成 ID
 
   // 从 API 加载集成
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
-      api.getIntegrations()
-        .then(setCustomIntegrations)
+      
+      // 并行加载自定义集成和预设集成
+      Promise.all([
+        api.getIntegrations(),
+        api.getPresetIntegrations()
+      ])
+        .then(([customInts, presetInts]) => {
+          setCustomIntegrations(customInts);
+          
+          // 合并数据库的配置和默认配置
+          // 始终使用 defaultPresets 的 name 和 icon，但使用数据库的 enabled 和 apiUrl
+          const mergedPresets = defaultPresets.map(defaultPreset => {
+            const saved = presetInts.find(p => p.id === defaultPreset.id);
+            return {
+              ...defaultPreset,
+              enabled: saved?.enabled ?? defaultPreset.enabled,
+              apiUrl: saved?.apiUrl ?? defaultPreset.apiUrl,
+              config: saved?.config ?? defaultPreset.config,
+              createdAt: saved?.createdAt,
+              updatedAt: saved?.updatedAt,
+            };
+          });
+          setPresets(mergedPresets);
+        })
         .catch(err => console.error('Failed to load integrations:', err))
         .finally(() => setIsLoading(false));
     }
@@ -192,6 +224,34 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
   const handleCancelEdit = () => {
     setEditingIntegration(null);
     setIsCreating(false);
+  };
+
+  // 测试 API 连通性
+  const handleTestApiConnection = async (preset: PresetIntegration) => {
+    if (!preset.apiUrl) {
+      alert('请先输入 API URL');
+      return;
+    }
+
+    setTestingApi(preset.id);
+    try {
+      const testUrl = `${preset.apiUrl.replace(/\/$/, '')}/api/config`;
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        mode: 'cors',
+      });
+
+      if (response.status === 200) {
+        alert('✅ API 连通性测试成功！');
+      } else {
+        alert(`❌ API 连通性测试失败\n状态码: ${response.status}\n状态文本: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('API test failed:', error);
+      alert(`❌ API 连通性测试失败\n错误: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setTestingApi(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -315,20 +375,94 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
             <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-3">预设集成</h3>
             <div className="space-y-2">
               {presets.map((preset) => (
-                <div
-                  key={preset.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Obsidian Icon */}
-                    {preset.icon === 'obsidian' && (
-                      <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                      </svg>
+                <div key={preset.id}>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {/* Hentai Assistant Icon */}
+                      {preset.icon === 'hentai-assistant' && (
+                        <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      )}
+                      <span className="text-gray-900 dark:text-dark-text">{preset.name}</span>
+                    </div>
+                    {preset.id === 'hentai-assistant' ? (
+                      <label className="flex items-center cursor-pointer">
+                        <div className="relative inline-block w-11 h-6">
+                          <input
+                            type="checkbox"
+                            checked={preset.enabled}
+                            onChange={async (e) => {
+                              const newEnabled = e.target.checked;
+                              const newPresets = presets.map(p => 
+                                p.id === preset.id ? { ...p, enabled: newEnabled } : p
+                              );
+                              setPresets(newPresets);
+                              
+                              // 保存到数据库
+                              try {
+                                await api.updatePresetIntegration(preset.id, { enabled: newEnabled });
+                                // 通知外部刷新
+                                onIntegrationsChange?.();
+                              } catch (err) {
+                                console.error('Failed to update preset integration:', err);
+                              }
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-300 transition-colors"></div>
+                          <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                        </div>
+                      </label>
+                    ) : (
+                      <span className="text-xs text-gray-400 dark:text-dark-text-secondary">即将推出</span>
                     )}
-                    <span className="text-gray-900 dark:text-dark-text">{preset.name}</span>
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-dark-text-secondary">即将推出</span>
+                  
+                  {/* Hentai Assistant 配置区域 */}
+                  {preset.id === 'hentai-assistant' && preset.enabled && (
+                    <div className="mt-2 ml-8 mr-3 p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border space-y-3">
+                      <div>
+                        <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                          API URL
+                        </label>
+                        <input
+                          type="text"
+                          value={preset.apiUrl || ''}
+                          onChange={(e) => {
+                            const newApiUrl = e.target.value;
+                            const newPresets = presets.map(p => 
+                              p.id === preset.id ? { ...p, apiUrl: newApiUrl } : p
+                            );
+                            setPresets(newPresets);
+                          }}
+                          onBlur={async (e) => {
+                            // 失去焦点时保存到数据库
+                            try {
+                              await api.updatePresetIntegration(preset.id, { apiUrl: e.target.value });
+                            } catch (err) {
+                              console.error('Failed to update preset integration:', err);
+                            }
+                          }}
+                          placeholder="https://your-api-url.com"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleTestApiConnection(preset)}
+                          disabled={!preset.apiUrl || testingApi === preset.id}
+                          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                        >
+                          {testingApi === preset.id ? '测试中...' : '测试连通性'}
+                        </button>
+                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
+                          将请求 {preset.apiUrl}/api/config
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -659,6 +793,97 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
 // 导出异步获取函数供其他组件使用
 export async function getCustomIntegrationsAsync(): Promise<CustomIntegration[]> {
   return api.getIntegrations();
+}
+
+// 检查 URL 是否匹配 Hentai Assistant 支持的域名
+function isHentaiAssistantCompatible(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return HENTAI_ASSISTANT_DOMAINS.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+// 合并预设集成的默认配置和数据库配置
+function mergePresetWithDefaults(presets: PresetIntegration[]): PresetIntegration[] {
+  return defaultPresets.map(defaultPreset => {
+    const saved = presets.find(p => p.id === defaultPreset.id);
+    return {
+      ...defaultPreset,
+      enabled: saved?.enabled ?? defaultPreset.enabled,
+      apiUrl: saved?.apiUrl ?? defaultPreset.apiUrl,
+      config: saved?.config ?? defaultPreset.config,
+      createdAt: saved?.createdAt,
+      updatedAt: saved?.updatedAt,
+    };
+  });
+}
+
+// 获取启用的预设集成 actions并根据 URL 过滤
+export function getPresetActions(presets: PresetIntegration[], url: string): PresetIntegration[] {
+  // 先合并默认配置，确保 name 和 icon 字段存在
+  const merged = mergePresetWithDefaults(presets);
+  
+  return merged.filter(preset => {
+    if (!preset.enabled || !preset.apiUrl) return false;
+    
+    // Hentai Assistant 需要检查域名匹配
+    if (preset.id === 'hentai-assistant') {
+      return isHentaiAssistantCompatible(url);
+    }
+    
+    return false;
+  });
+}
+
+// 执行预设集成 action
+export async function executePresetAction(
+  preset: PresetIntegration,
+  variables: { url: string; title: string }
+): Promise<{ success: boolean; message?: string; response?: unknown }> {
+  try {
+    if (preset.id === 'hentai-assistant') {
+      // Hentai Assistant: 向 {API_URL}/api/download?url={url} 推送
+      const apiUrl = preset.apiUrl?.replace(/\/$/, '') || '';
+      const downloadUrl = `${apiUrl}/api/download?url=${encodeURIComponent(variables.url)}`;
+      
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        mode: 'cors',
+      });
+      
+      // 尝试解析响应
+      let responseData: unknown = null;
+      try {
+        const text = await response.text();
+        try {
+          responseData = JSON.parse(text);
+        } catch {
+          responseData = text;
+        }
+      } catch {
+        // 忽略响应解析错误
+      }
+      
+      if (response.ok) {
+        return { success: true, response: responseData };
+      } else {
+        return { 
+          success: false, 
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          response: responseData 
+        };
+      }
+    }
+    
+    return { success: false, message: '未知的预设集成类型' };
+  } catch (error) {
+    console.error('Preset action execution failed:', error);
+    return { success: false, message: String(error) };
+  }
 }
 
 // ==================== 模板引擎 ====================

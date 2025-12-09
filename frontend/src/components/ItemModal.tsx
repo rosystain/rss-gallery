@@ -360,8 +360,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: result.success ? 'success' as const : 'error' as const,
-        integrationName: preset.name,
-        message: result.success ? `${preset.name} 执行成功` : `${preset.name} 执行失败`,
+        integrationName: preset.name || preset.id,
+        message: result.success ? `${preset.name || preset.id} 执行成功` : `${preset.name || preset.id} 执行失败`,
         detail: result.success 
           ? (result.response 
               ? (typeof result.response === 'string' 
@@ -378,8 +378,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: 'error' as const,
-        integrationName: preset.name,
-        message: `${preset.name} 执行失败`,
+        integrationName: preset.name || preset.id,
+        message: `${preset.name || preset.id} 执行失败`,
         detail: errorMessage,
         timestamp: new Date(),
       };

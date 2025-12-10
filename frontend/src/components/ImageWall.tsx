@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
-import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction } from './IntegrationSettings';
+import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible } from './IntegrationSettings';
 
 // 悬浮标记已读的延迟时间（毫秒）
 const HOVER_READ_DELAY = 1500;
@@ -213,6 +213,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [presetIntegrations, setPresetIntegrations] = useState<PresetIntegration[]>([]); // 预设集成列表
   const [executingIntegration, setExecutingIntegration] = useState<string | null>(null); // 正在执行的集成 ID
   const [executingPreset, setExecutingPreset] = useState<string | null>(null); // 正在执行的预设集成 ID
+  const [addingToFavorite, setAddingToFavorite] = useState<string | null>(null); // 正在添加到收藏夹的 item ID
   const [favoritingItemId, setFavoritingItemId] = useState<string | null>(null); // 正在切换收藏状态的 item ID
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
@@ -612,6 +613,86 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }, 500);
   }, [toastExpanded, onAddExecutionHistory]);
 
+  // 处理添加到收藏夹
+  const handleAddToFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem, preset: PresetIntegration) => {
+    e.stopPropagation(); // 阻止触发卡片点击
+    
+    if (!preset.apiUrl || !preset.defaultFavcat) {
+      alert('请先在设置中配置收藏夹');
+      return;
+    }
+    
+    setAddingToFavorite(item.id);
+    
+    // 清除现有的 toast 定时器
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    
+    try {
+      const result = await api.addToHentaiAssistantFavorite(
+        preset.apiUrl,
+        item.link || '',
+        preset.defaultFavcat,
+        preset.defaultNote
+      );
+      
+      const historyEntry = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        type: result.success ? 'success' as const : 'error' as const,
+        integrationName: `${preset.name || preset.id} - 收藏`,
+        message: result.success ? '添加到收藏夹成功' : '添加到收藏夹失败',
+        detail: result.message,
+        timestamp: new Date(),
+      };
+      
+      onAddExecutionHistory?.(historyEntry);
+      
+      setToast({ 
+        type: historyEntry.type, 
+        message: historyEntry.message,
+        detail: historyEntry.detail
+      });
+      setToastExpanded(false);
+      
+      toastTimerRef.current = setTimeout(() => {
+        if (!toastExpanded) {
+          setToast(null);
+        }
+      }, 5000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const historyEntry = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        type: 'error' as const,
+        integrationName: `${preset.name || preset.id} - 收藏`,
+        message: '添加到收藏夹失败',
+        detail: errorMessage,
+        timestamp: new Date(),
+      };
+      
+      onAddExecutionHistory?.(historyEntry);
+      
+      setToast({ 
+        type: 'error', 
+        message: historyEntry.message,
+        detail: errorMessage
+      });
+      setToastExpanded(false);
+      
+      toastTimerRef.current = setTimeout(() => {
+        if (!toastExpanded) {
+          setToast(null);
+        }
+      }, 5000);
+    }
+    
+    setTimeout(() => {
+      setAddingToFavorite(null);
+    }, 500);
+  }, [toastExpanded, onAddExecutionHistory]);
+
   // 展开 Toast 时停止自动关闭
   const handleExpandToast = useCallback(() => {
     if (toastTimerRef.current) {
@@ -755,27 +836,49 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             <div className="absolute bottom-0 right-0 left-0 flex justify-end gap-1 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
               {/* Preset Actions */}
               {getItemPresetActions(item).map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={(e) => handleExecutePresetAction(e, item, preset)}
-                  className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
-                  title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
-                >
-                  {executingPreset === preset.id ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : preset.icon === 'hentai-assistant' ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                <div key={preset.id} className="flex gap-1">
+                  {/* 推送下载按钮 */}
+                  <button
+                    onClick={(e) => handleExecutePresetAction(e, item, preset)}
+                    className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
+                  >
+                    {executingPreset === preset.id ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : preset.icon === 'hentai-assistant' ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {/* 添加到收藏夹按钮（仅 Hentai Assistant 且配置了收藏夹且 URL 匹配 E-Hentai 域名） */}
+                  {preset.id === 'hentai-assistant' && preset.defaultFavcat && item.link && isHentaiAssistantFavoriteCompatible(item.link) && (
+                    <button
+                      onClick={(e) => handleAddToFavorite(e, item, preset)}
+                      className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                      title="添加到 E-Hentai 收藏夹"
+                    >
+                      {addingToFavorite === item.id ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               ))}
               
               {/* Custom Integrations */}

@@ -77,6 +77,12 @@ export type IntegrationIcon =
   | 'chat'        // 聊天
   | 'lightning';  // 闪电
 
+// 收藏夹分类
+export interface FavoriteCategory {
+  id: string;
+  name: string;
+}
+
 // 预设集成（如 Obsidian、Hentai Assistant 等）
 export interface PresetIntegration {
   id: string;
@@ -85,6 +91,9 @@ export interface PresetIntegration {
   enabled: boolean;
   config?: Record<string, string>;
   apiUrl?: string;  // API 基础 URL（用于私人集成）
+  // 收藏夹相关配置
+  defaultFavcat?: string;  // 默认收藏夹 ID
+  defaultNote?: string;  // 默认收藏笔记
   createdAt?: string;
   updatedAt?: string;
 }

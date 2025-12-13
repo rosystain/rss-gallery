@@ -813,8 +813,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       
       <Masonry
         breakpointCols={breakpointColumns}
-        className="flex -ml-4 w-auto"
-        columnClassName="pl-4 bg-clip-padding"
+        className="flex w-auto pt-4"
+        columnClassName="first:pl-0 pl-4 bg-clip-padding"
       >
         {items.map((item) => (
           <div

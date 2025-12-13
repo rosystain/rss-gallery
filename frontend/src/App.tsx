@@ -1101,7 +1101,7 @@ function App() {
 
       {/* Topbar Mode */}
       {currentLayout === 'topbar' && (
-        <div className="mx-3 mt-3 mb-0">
+        <div className="mx-4 mt-4 mb-0">
           <div className="bg-white dark:bg-dark-card shadow-lg border border-gray-200 dark:border-dark-border px-3 h-12 flex items-center" style={{ borderRadius: '16px' }}>
             <div 
               ref={topbarScrollRef}
@@ -1119,18 +1119,18 @@ function App() {
                   }
                   handleFeedFilter('');
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
                   selectedFeed === ''
                     ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                     : 'text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover'
                 }`}
+                title="全部"
               >
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
                   <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
                   <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
                 </svg>
-                <span className="font-medium">全部</span>
                 {(() => {
                   const totalUnread = feeds.reduce((sum, f) => sum + (f.unreadCount || 0), 0);
                   return totalUnread > 0 ? (
@@ -1150,16 +1150,16 @@ function App() {
                   }
                   handleFeedFilter('favorites');
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
                   selectedFeed === 'favorites'
                     ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                     : 'text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover'
                 }`}
+                title="收藏"
               >
                 <svg className="w-3.5 h-3.5" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                <span className="font-medium">收藏</span>
               </button>
 
               {/* 订阅源列表 */}
@@ -1405,7 +1405,7 @@ function App() {
         {/* Main Content Area */}
         <div className={`flex-1 flex flex-col ${!isResizingSidebar ? 'transition-all duration-150' : ''}`}
           style={{
-            marginLeft: currentLayout === 'sidebar' ? `${sidebarWidth + 24}px` : '0'
+            marginLeft: currentLayout === 'sidebar' ? `${sidebarWidth + 16}px` : '0'
           }}>
         {/* Add Feed Modal/Form */}
         {showAddFeed && (
@@ -1641,7 +1641,7 @@ function App() {
         )}
 
         {/* Gallery Content */}
-        <main className="flex-1 overflow-y-auto px-3 pt-3 pb-6">
+        <main className="flex-1 overflow-y-auto px-4 pb-6">
           {isLoading && page === 1 ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

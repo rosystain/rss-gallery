@@ -159,12 +159,39 @@ function App() {
   const [integrationsRefreshTrigger, setIntegrationsRefreshTrigger] = useState(0);
   const loadMoreButtonRef = useRef<HTMLDivElement>(null);
   const fetchVersionRef = useRef(0); // 用于追踪请求版本，避免竞态条件
+  
+  // Topbar 拖拽滑动相关状态
+  const topbarScrollRef = useRef<HTMLDivElement>(null);
+  const [isTopbarDragging, setIsTopbarDragging] = useState(false);
+  const topbarDragStartX = useRef(0);
+  const topbarScrollStartX = useRef(0);
+  const topbarDragDistance = useRef(0);
+
+  // Header 高度动态获取
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   // Save layout mode to localStorage
 // Save sidebar state to localStorage
   useEffect(() => {
     localStorage.setItem('sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
+
+  // 动态获取header高度
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, []);
 
   // Save auto load more preference to localStorage
   useEffect(() => {
@@ -665,18 +692,62 @@ function App() {
     };
   }, [isResizingSidebar, sidebarWidth]);
 
+  // Topbar 拖拽滑动处理
+  const handleTopbarMouseDown = (e: React.MouseEvent) => {
+    if (!topbarScrollRef.current) return;
+    setIsTopbarDragging(true);
+    topbarDragStartX.current = e.clientX;
+    topbarScrollStartX.current = topbarScrollRef.current.scrollLeft;
+    topbarDragDistance.current = 0;
+    topbarScrollRef.current.style.cursor = 'grabbing';
+    topbarScrollRef.current.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    if (!isTopbarDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!topbarScrollRef.current) return;
+      const deltaX = e.clientX - topbarDragStartX.current;
+      topbarDragDistance.current = Math.abs(deltaX);
+      topbarScrollRef.current.scrollLeft = topbarScrollStartX.current - deltaX;
+    };
+
+    const handleMouseUp = () => {
+      setIsTopbarDragging(false);
+      if (topbarScrollRef.current) {
+        topbarScrollRef.current.style.cursor = 'grab';
+        topbarScrollRef.current.style.userSelect = '';
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isTopbarDragging]);
+
   // 判断是否为紧凑模式（宽度小于100px）
   const isCompactMode = sidebarWidth < 100;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
       {/* Top Bar */}
-      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-6 py-4 sticky top-0 z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>
-            <div className="h-6 w-px bg-gray-300 dark:bg-dark-border"></div>
-            <h2 className="text-base font-medium text-gray-700 dark:text-dark-text-secondary">
+      <header ref={headerRef} className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
+        <div className="flex items-center justify-between gap-4 min-h-[32px]">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-dark-text whitespace-nowrap flex-shrink-0">RSS 图片墙</h1>
+            <div className="h-5 w-px bg-gray-300 dark:bg-dark-border flex-shrink-0"></div>
+            <h2 className="text-base font-medium text-gray-700 dark:text-dark-text-secondary truncate min-w-0" title={
+              selectedFeed === 'favorites'
+                ? '收藏'
+                : selectedFeed 
+                  ? feeds.find(f => f.id === selectedFeed)?.title 
+                  : '全部内容'
+            }>
               {selectedFeed === 'favorites'
                 ? '收藏'
                 : selectedFeed 
@@ -684,13 +755,13 @@ function App() {
                   : '全部内容'
               }
             </h2>
-            <span className="text-sm text-gray-500 dark:text-dark-text-secondary">
+            <span className="text-sm text-gray-500 dark:text-dark-text-secondary whitespace-nowrap flex-shrink-0">
               {items.length} 项
             </span>
           </div>
           
           {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Image Width Control */}
             <div className="relative">
               <button
@@ -816,11 +887,11 @@ function App() {
                 title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
               >
                 {getCurrentUnreadFilter() ? (
-                  <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <circle cx="10" cy="10" r="7" />
                   </svg>
                 ) : (
-                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
                     <circle cx="10" cy="10" r="7" />
                   </svg>
                 )}
@@ -887,7 +958,7 @@ function App() {
                   )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => (
+                  {() => (
                     <div className="px-4 py-2">
                       <div className="text-xs font-semibold text-gray-500 dark:text-dark-text-secondary mb-2">主题</div>
                       <div className="flex gap-2">
@@ -932,7 +1003,7 @@ function App() {
                   )}
                 </Menu.Item>
                 <Menu.Item>
-                  {({ active }) => (
+                  {() => (
                     <div className="px-4 py-2">
                       <div className="text-xs font-semibold text-gray-500 dark:text-dark-text-secondary mb-2">边栏样式</div>
                       <div className="flex gap-2">
@@ -1032,13 +1103,25 @@ function App() {
       {currentLayout === 'topbar' && (
         <div className="mx-3 mt-3 mb-0">
           <div className="bg-white dark:bg-dark-card shadow-lg border border-gray-200 dark:border-dark-border px-3 h-12 flex items-center" style={{ borderRadius: '16px' }}>
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1">
+            <div 
+              ref={topbarScrollRef}
+              className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1"
+              style={{ cursor: 'grab' }}
+              onMouseDown={handleTopbarMouseDown}
+            >
               {/* 全部 */}
               <button
-                onClick={() => handleFeedFilter('')}
+                onClick={(e) => {
+                  // 如果拖拽距离超过5px，阻止点击
+                  if (topbarDragDistance.current > 5) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleFeedFilter('');
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
                   selectedFeed === ''
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                     : 'text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover'
                 }`}
               >
@@ -1051,7 +1134,7 @@ function App() {
                 {(() => {
                   const totalUnread = feeds.reduce((sum, f) => sum + (f.unreadCount || 0), 0);
                   return totalUnread > 0 ? (
-                    <span className="text-xs px-1 py-0.5 rounded-full bg-white/20">
+                    <span className="text-xs px-1 py-0.5 rounded-full bg-gray-400 dark:bg-gray-600 text-white">
                       {totalUnread}
                     </span>
                   ) : null;
@@ -1060,10 +1143,16 @@ function App() {
 
               {/* 收藏 */}
               <button
-                onClick={() => handleFeedFilter('favorites')}
+                onClick={(e) => {
+                  if (topbarDragDistance.current > 5) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleFeedFilter('favorites');
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
                   selectedFeed === 'favorites'
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                     : 'text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover'
                 }`}
               >
@@ -1077,10 +1166,16 @@ function App() {
               {feeds.map((feed) => (
                 <button
                   key={feed.id}
-                  onClick={() => handleFeedFilter(feed.id)}
+                  onClick={(e) => {
+                    if (topbarDragDistance.current > 5) {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleFeedFilter(feed.id);
+                  }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap text-sm ${
                     selectedFeed === feed.id
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                   title={feed.lastFetchError ? `⚠️ ${feed.lastFetchError}` : feed.title}
@@ -1097,9 +1192,9 @@ function App() {
                       <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                     </svg>
                   )}
-                  <span className="font-medium max-w-[150px] truncate">{feed.title}</span>
+                  <span className="font-medium max-w-[100px] truncate">{feed.title}</span>
                   {feed.unreadCount !== undefined && feed.unreadCount > 0 && (
-                    <span className="text-xs px-1 py-0.5 rounded-full bg-white/20">
+                    <span className="text-xs px-1 py-0.5 rounded-full bg-gray-400 dark:bg-gray-600 text-white">
                       {feed.unreadCount}
                     </span>
                   )}
@@ -1113,7 +1208,11 @@ function App() {
 
               {/* 添加订阅按钮 */}
               <button
-                onClick={async () => {
+                onClick={async (e) => {
+                  if (topbarDragDistance.current > 5) {
+                    e.preventDefault();
+                    return;
+                  }
                   setShowAddFeed(!showAddFeed);
                   if (!showAddFeed) {
                     try {
@@ -1144,7 +1243,7 @@ function App() {
         {currentLayout === 'sidebar' && (
           <div className={`fixed left-4 bottom-4 z-40 ${!isResizingSidebar ? 'transition-all duration-150' : ''}`} 
             style={{
-              top: 'calc(4rem + 1rem)',
+              top: headerHeight > 0 ? `${headerHeight + 16}px` : 'calc(3.5rem + 1rem)',
               width: `${sidebarWidth}px`
             }}>
           <aside 

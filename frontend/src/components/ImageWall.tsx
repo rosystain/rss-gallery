@@ -555,8 +555,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: result.success ? 'success' as const : 'error' as const,
-        integrationName: preset.name,
-        message: result.success ? `${preset.name} 执行成功` : `${preset.name} 执行失败`,
+        integrationName: preset.name || 'Unknown',
+        message: result.success ? `${preset.name || 'Unknown'} 执行成功` : `${preset.name || 'Unknown'} 执行失败`,
         detail: result.success 
           ? (result.response 
               ? (typeof result.response === 'string' 
@@ -586,8 +586,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: 'error' as const,
-        integrationName: preset.name,
-        message: `${preset.name} 执行失败`,
+        integrationName: preset.name || 'Unknown',
+        message: `${preset.name || 'Unknown'} 执行失败`,
         detail: errorMessage,
         timestamp: new Date(),
       };

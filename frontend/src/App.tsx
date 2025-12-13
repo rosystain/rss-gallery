@@ -4,8 +4,29 @@ import { api } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
-import ThemeToggle from './components/ThemeToggle';
 import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent } from './components/IntegrationSettings';
+
+type Theme = 'system' | 'light' | 'dark';
+
+// 获取系统主题
+function getSystemTheme(): 'light' | 'dark' {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
+// 应用主题到 HTML 元素
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+  
+  if (effectiveTheme === 'dark') {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+}
 
 function App() {
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -21,9 +42,19 @@ function App() {
   const [newFeedEnabledIntegrations, setNewFeedEnabledIntegrations] = useState<string[] | null>(null);
   const [newFeedAvailableIntegrations, setNewFeedAvailableIntegrations] = useState<CustomIntegration[]>([]);
 
-  const [layoutMode, setLayoutMode] = useState<'sidebar' | 'topbar'>(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme') as Theme | null;
+      const initialTheme: Theme = (saved === 'system' || saved === 'light' || saved === 'dark') ? saved : 'system';
+      applyTheme(initialTheme);
+      return initialTheme;
+    }
+    return 'system';
+  });
+
+  const [layoutMode, setLayoutMode] = useState<'sidebar' | 'topbar' | 'auto'>(() => {
     const saved = localStorage.getItem('layoutMode');
-    return (saved as 'sidebar' | 'topbar') || 'sidebar';
+    return (saved as 'sidebar' | 'topbar' | 'auto') || 'auto';
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth');
@@ -33,6 +64,55 @@ function App() {
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
   const expandedWidth = useRef(256); // 保存展开时的宽度
+  
+  // 根据屏幕宽度自动判断实际布局（仅当layoutMode为auto时）
+  const [actualLayout, setActualLayout] = useState<'sidebar' | 'topbar'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024 ? 'sidebar' : 'topbar';
+    }
+    return 'sidebar';
+  });
+  
+  // 监听窗口大小变化（仅在auto模式下）
+  useEffect(() => {
+    if (layoutMode !== 'auto') return;
+    
+    const handleResize = () => {
+      const newLayout = window.innerWidth >= 1024 ? 'sidebar' : 'topbar';
+      setActualLayout(newLayout);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // 初始化
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, [layoutMode]);
+  
+  // 应用和保存主题
+  useEffect(() => {
+    applyTheme(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // 监听系统主题变化
+  useEffect(() => {
+    if (theme !== 'system') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme('system');
+    mediaQuery.addEventListener('change', handleChange);
+    
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
+
+  // 保存layoutMode到localStorage
+  useEffect(() => {
+    localStorage.setItem('layoutMode', layoutMode);
+  }, [layoutMode]);
+  
+  // 计算当前使用的布局
+  const currentLayout = layoutMode === 'auto' ? actualLayout : layoutMode;
+  
   const [imageWidth, setImageWidth] = useState(() => {
     const saved = localStorage.getItem('imageWidth');
     return saved ? parseInt(saved) : 5; // Default to medium (5 columns)
@@ -555,7 +635,7 @@ function App() {
     } else {
       // 当前是展开模式，保存当前宽度并折叠
       expandedWidth.current = sidebarWidth;
-      setSidebarWidth(64);
+      setSidebarWidth(58);
     }
   };
 
@@ -564,7 +644,7 @@ function App() {
 
     const handleMouseMove = (e: MouseEvent) => {
       const delta = e.clientX - resizeStartX.current;
-      const newWidth = Math.max(64, Math.min(400, resizeStartWidth.current + delta));
+      const newWidth = Math.max(58, Math.min(400, resizeStartWidth.current + delta));
       setSidebarWidth(newWidth);
       // 实时更新展开宽度（只在非紧凑模式时）
       if (newWidth >= 100) {
@@ -747,8 +827,6 @@ function App() {
               </button>
             )}
             
-            <ThemeToggle />
-            
             <button
               onClick={() => triggerRefresh()}
               className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
@@ -808,6 +886,102 @@ function App() {
                     </button>
                   )}
                 </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <div className="px-4 py-2">
+                      <div className="text-xs font-semibold text-gray-500 dark:text-dark-text-secondary mb-2">主题</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setTheme('system')}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            theme === 'system'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setTheme('light')}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            theme === 'light'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setTheme('dark')}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            theme === 'dark'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <div className="px-4 py-2">
+                      <div className="text-xs font-semibold text-gray-500 dark:text-dark-text-secondary mb-2">边栏样式</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setLayoutMode('auto')}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            layoutMode === 'auto'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLayoutMode('sidebar');
+                            setSidebarWidth(58);
+                          }}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            layoutMode === 'sidebar'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="2"/>
+                            <line x1="3" y1="4" x2="3" y2="20" strokeWidth="2"/>
+                            <line x1="9" y1="4" x2="9" y2="20" strokeWidth="2"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setLayoutMode('topbar')}
+                          className={`flex-1 px-3 py-2 text-xs rounded transition flex items-center justify-center ${
+                            layoutMode === 'topbar'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="2"/>
+                            <line x1="3" y1="9" x2="21" y2="9" strokeWidth="2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Menu.Item>
                 {selectedFeed && selectedFeed !== 'favorites' && (
                   <>
                     <Menu.Item>
@@ -855,26 +1029,10 @@ function App() {
       </header>
 
       {/* Topbar Mode */}
-      {layoutMode === 'topbar' && (
-        <div className="mx-4 mt-3 mb-0">
-          <div className="bg-white dark:bg-dark-card rounded-xl shadow-lg border border-gray-200 dark:border-dark-border px-3 py-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              {/* 切换回侧边栏按钮 */}
-              <button
-                onClick={() => {
-                  setLayoutMode('sidebar');
-                  setSidebarWidth(64); // 设置为紧凑模式宽度
-                }}
-                className="p-1.5 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition flex-shrink-0"
-                title="切换到侧边栏模式"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="2"/>
-                  <line x1="3" y1="4" x2="3" y2="20" strokeWidth="2"/>
-                  <line x1="9" y1="4" x2="9" y2="20" strokeWidth="2"/>
-                </svg>
-              </button>
-
+      {currentLayout === 'topbar' && (
+        <div className="mx-3 mt-3 mb-0">
+          <div className="bg-white dark:bg-dark-card shadow-lg border border-gray-200 dark:border-dark-border px-3 h-12 flex items-center" style={{ borderRadius: '16px' }}>
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1">
               {/* 全部 */}
               <button
                 onClick={() => handleFeedFilter('')}
@@ -983,14 +1141,15 @@ function App() {
       {/* Content Area */}
       <div className="flex-1 flex">
         {/* Sidebar Mode - Floating Card */}
-        {layoutMode === 'sidebar' && (
+        {currentLayout === 'sidebar' && (
           <div className={`fixed left-4 bottom-4 z-40 ${!isResizingSidebar ? 'transition-all duration-150' : ''}`} 
             style={{
               top: 'calc(4rem + 1rem)',
               width: `${sidebarWidth}px`
             }}>
           <aside 
-            className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-gray-200 dark:border-dark-border flex flex-col h-full overflow-hidden relative select-none"
+            className="bg-white dark:bg-dark-card shadow-lg border border-gray-200 dark:border-dark-border flex flex-col h-full overflow-hidden relative select-none"
+            style={{ borderRadius: '16px' }}
             onDoubleClick={handleSidebarDoubleClick}
           >
               {/* 拖拽调节手柄 */}
@@ -1002,26 +1161,12 @@ function App() {
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-16 bg-gray-300 dark:bg-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
 
-              {/* Top Actions */}
-              <div className="p-2 border-b border-gray-200 dark:border-dark-border">
-                <button
-                  onClick={() => setLayoutMode('topbar')}
-                  className="w-full p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition flex items-center justify-center"
-                  title="切换到顶栏模式"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="2"/>
-                    <line x1="3" y1="9" x2="21" y2="9" strokeWidth="2"/>
-                  </svg>
-                </button>
-              </div>
-
               {/* Feed List */}
               <div className="flex-1 overflow-y-auto p-2">
                 {/* All Items */}
                 <button
                   onClick={() => handleFeedFilter('')}
-                  className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between group ${
+                  className={`w-full h-10 text-left px-3 rounded-lg mb-1 transition flex items-center justify-between group ${
                     selectedFeed === ''
                       ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
@@ -1029,12 +1174,12 @@ function App() {
                   title={isCompactMode ? '全部' : ''}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
                       <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
                       <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
                     </svg>
-                    {!isCompactMode && <span className="font-medium">全部</span>}
+                    {!isCompactMode && <span className="text-sm truncate overflow-hidden">全部</span>}
                   </div>
                   {!isCompactMode && (() => {
                     const totalUnread = feeds.reduce((sum, f) => sum + (f.unreadCount || 0), 0);
@@ -1049,7 +1194,7 @@ function App() {
                 {/* Favorites */}
                 <button
                   onClick={() => handleFeedFilter('favorites')}
-                  className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between group ${
+                  className={`w-full h-10 text-left px-3 rounded-lg mb-1 transition flex items-center justify-between group ${
                     selectedFeed === 'favorites'
                       ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
@@ -1057,38 +1202,27 @@ function App() {
                   title={isCompactMode ? '收藏' : ''}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <svg className="w-5 h-5 flex-shrink-0" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 flex-shrink-0" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
-                    {!isCompactMode && <span className="font-medium">收藏</span>}
+                    {!isCompactMode && <span className="text-sm truncate overflow-hidden">收藏</span>}
                   </div>
                 </button>
 
                 {/* Feed Items */}
-                <div className="mt-4">
-                  {!isCompactMode && (
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-dark-text-secondary uppercase tracking-wider">
-                      订阅列表
-                    </div>
-                  )}
-
-                  {!isCompactMode && (
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-dark-text-secondary uppercase tracking-wider">
-                      订阅列表
-                    </div>
-                  )}
+                <div>
                   {feeds.map((feed) => (
                     <button
                       key={feed.id}
                       onClick={() => handleFeedFilter(feed.id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between ${
+                      className={`w-full h-10 text-left px-3 rounded-lg mb-1 transition flex items-center justify-between ${
                         selectedFeed === feed.id
                           ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                           : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                       }`}
                       title={isCompactMode ? feed.title : (feed.lastFetchError ? `⚠️ 抓取失败: ${feed.lastFetchError}` : '')}
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                         {feed.favicon ? (
                           <img 
                             src={feed.favicon} 
@@ -1115,7 +1249,7 @@ function App() {
                             <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                           </svg>
                         )}
-                        {!isCompactMode && <span className="truncate text-sm">{feed.title}</span>}
+                        {!isCompactMode && <span className="truncate overflow-hidden text-sm">{feed.title}</span>}
                         {/* 抓取失败时显示黄色感叹号 */}
                         {feed.lastFetchError && (
                           <span 
@@ -1154,15 +1288,15 @@ function App() {
                       }
                     }
                   }}
-                  className={`w-full py-2 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 ${
+                  className={`w-full h-10 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 ${
                     isCompactMode ? 'justify-center px-0' : 'justify-center px-4'
                   }`}
                   title={isCompactMode ? '添加订阅' : ''}
                 >
-                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  {!isCompactMode && <span>添加订阅</span>}
+                  {!isCompactMode && <span className="text-sm truncate overflow-hidden">添加订阅</span>}
                 </button>
               </div>
             </aside>
@@ -1172,7 +1306,7 @@ function App() {
         {/* Main Content Area */}
         <div className={`flex-1 flex flex-col ${!isResizingSidebar ? 'transition-all duration-150' : ''}`}
           style={{
-            marginLeft: layoutMode === 'sidebar' ? `${sidebarWidth + 32}px` : '0'
+            marginLeft: currentLayout === 'sidebar' ? `${sidebarWidth + 24}px` : '0'
           }}>
         {/* Add Feed Modal/Form */}
         {showAddFeed && (
@@ -1408,7 +1542,7 @@ function App() {
         )}
 
         {/* Gallery Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-3 pt-3 pb-6">
           {isLoading && page === 1 ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

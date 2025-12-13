@@ -167,6 +167,8 @@ class PresetIntegrationUpdate(BaseModel):
     enabled: Optional[bool] = None
     api_url: Optional[str] = None
     config: Optional[dict] = None
+    default_favcat: Optional[str] = None
+    default_note: Optional[str] = None
 
 
 class PresetIntegrationResponse(BaseModel):
@@ -174,6 +176,8 @@ class PresetIntegrationResponse(BaseModel):
     enabled: bool
     api_url: Optional[str]
     config: Optional[dict]
+    default_favcat: Optional[str]
+    default_note: Optional[str]
     created_at: datetime
     updated_at: datetime
 

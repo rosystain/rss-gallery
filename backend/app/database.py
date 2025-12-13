@@ -91,6 +91,8 @@ class PresetIntegration(Base):
     enabled = Column(Boolean, default=False)
     api_url = Column(String)  # API 基础 URL
     config = Column(Text)  # JSON 字符串，存储其他配置
+    default_favcat = Column(String)  # 默认收藏夹 ID
+    default_note = Column(Text)  # 默认收藏笔记
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -148,6 +150,23 @@ def migrate_db():
             print("Migrating: Creating preset_integrations table...")
             Base.metadata.tables['preset_integrations'].create(bind=engine)
             print("Migration complete: preset_integrations table created")
+        else:
+            # 检查 preset_integrations 表的列
+            preset_columns = [col['name'] for col in inspector.get_columns('preset_integrations')]
+            
+            # 添加 default_favcat 列
+            if 'default_favcat' not in preset_columns:
+                print("Migrating: Adding default_favcat column to preset_integrations table...")
+                conn.execute(text("ALTER TABLE preset_integrations ADD COLUMN default_favcat TEXT"))
+                conn.commit()
+                print("Migration complete: default_favcat column added")
+            
+            # 添加 default_note 列
+            if 'default_note' not in preset_columns:
+                print("Migrating: Adding default_note column to preset_integrations table...")
+                conn.execute(text("ALTER TABLE preset_integrations ADD COLUMN default_note TEXT"))
+                conn.commit()
+                print("Migration complete: default_note column added")
 
 
 def init_db():

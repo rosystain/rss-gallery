@@ -975,6 +975,8 @@ def get_preset_integrations(db: Session = Depends(get_db)):
             "enabled": preset.enabled,
             "api_url": preset.api_url,
             "config": json.loads(preset.config) if preset.config else None,
+            "default_favcat": preset.default_favcat,
+            "default_note": preset.default_note,
             "created_at": preset.created_at,
             "updated_at": preset.updated_at,
         }
@@ -995,6 +997,8 @@ def get_preset_integration(preset_id: str, db: Session = Depends(get_db)):
         "enabled": preset.enabled,
         "api_url": preset.api_url,
         "config": json.loads(preset.config) if preset.config else None,
+        "default_favcat": preset.default_favcat,
+        "default_note": preset.default_note,
         "created_at": preset.created_at,
         "updated_at": preset.updated_at,
     }
@@ -1012,6 +1016,8 @@ def update_preset_integration(preset_id: str, update: PresetIntegrationUpdate, d
             enabled=update.enabled if update.enabled is not None else False,
             api_url=update.api_url,
             config=json.dumps(update.config) if update.config else None,
+            default_favcat=update.default_favcat,
+            default_note=update.default_note,
         )
         db.add(preset)
     else:
@@ -1022,6 +1028,10 @@ def update_preset_integration(preset_id: str, update: PresetIntegrationUpdate, d
             preset.api_url = update.api_url
         if update.config is not None:
             preset.config = json.dumps(update.config)
+        if update.default_favcat is not None:
+            preset.default_favcat = update.default_favcat
+        if update.default_note is not None:
+            preset.default_note = update.default_note
         preset.updated_at = datetime.utcnow()
     
     db.commit()
@@ -1032,6 +1042,8 @@ def update_preset_integration(preset_id: str, update: PresetIntegrationUpdate, d
         "enabled": preset.enabled,
         "api_url": preset.api_url,
         "config": json.loads(preset.config) if preset.config else None,
+        "default_favcat": preset.default_favcat,
+        "default_note": preset.default_note,
         "created_at": preset.created_at,
         "updated_at": preset.updated_at,
     }

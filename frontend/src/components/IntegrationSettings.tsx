@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { CustomIntegration, IntegrationType, WebhookMethod, PresetIntegration, IntegrationIcon } from '../types';
+import type { CustomIntegration, IntegrationType, WebhookMethod, PresetIntegration, IntegrationIcon, FavoriteCategory } from '../types';
 import type { ReactNode } from 'react';
 import { api } from '../services/api';
 
@@ -78,6 +78,12 @@ const HENTAI_ASSISTANT_DOMAINS = [
   'nhentai.net',
 ];
 
+// Hentai Assistant 收藏夹支持的域名列表（仅 E-Hentai）
+const HENTAI_ASSISTANT_FAVORITE_DOMAINS = [
+  'e-hentai.org',
+  'exhentai.org',
+];
+
 // 执行历史记录类型
 export interface ExecutionHistoryEntry {
   id: string;
@@ -105,6 +111,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
   const [, setIsLoading] = useState(false);
   const [, setIsSaving] = useState(false);
   const [testingApi, setTestingApi] = useState<string | null>(null);  // 正在测试的集成 ID
+  const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);  // 收藏夹分类
 
   // 从 API 加载集成
   useEffect(() => {
@@ -128,11 +135,24 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
               enabled: saved?.enabled ?? defaultPreset.enabled,
               apiUrl: saved?.apiUrl ?? defaultPreset.apiUrl,
               config: saved?.config ?? defaultPreset.config,
+              defaultFavcat: saved?.defaultFavcat ?? defaultPreset.defaultFavcat,
+              defaultNote: saved?.defaultNote ?? defaultPreset.defaultNote,
               createdAt: saved?.createdAt,
               updatedAt: saved?.updatedAt,
             };
           });
           setPresets(mergedPresets);
+          
+          // 自动尝试加载收藏夹分类（消极策略：失败则静默忽略）
+          const haPreset = mergedPresets.find(p => p.id === 'hentai-assistant');
+          if (haPreset?.enabled && haPreset.apiUrl) {
+            api.getHentaiAssistantFavoriteCategories(haPreset.apiUrl)
+              .then(categories => setFavoriteCategories(categories))
+              .catch(() => {
+                // 加载失败，使用默认 0-9 编号
+                setFavoriteCategories(Array.from({ length: 10 }, (_, i) => ({ id: String(i), name: String(i) })));
+              });
+          }
         })
         .catch(err => console.error('Failed to load integrations:', err))
         .finally(() => setIsLoading(false));
@@ -460,6 +480,74 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                         <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
                           将请求 {preset.apiUrl}/api/config
                         </span>
+                      </div>
+
+                      {/* 收藏夹配置 */}
+                      <div className="pt-3 border-t border-gray-200 dark:border-dark-border">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-2">收藏夹设置</h4>
+                        <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-3">仅支持 E-Hentai (e-hentai.org / exhentai.org)</p>
+                        
+                        <div className="space-y-3">
+                          {/* 默认收藏夹选择 */}
+                          <div>
+                            <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                              默认收藏夹
+                            </label>
+                            <select
+                              value={preset.defaultFavcat || ''}
+                              onChange={async (e) => {
+                                const newFavcat = e.target.value;
+                                const newPresets = presets.map(p => 
+                                  p.id === preset.id ? { ...p, defaultFavcat: newFavcat } : p
+                                );
+                                setPresets(newPresets);
+                                
+                                // 保存到数据库
+                                try {
+                                  await api.updatePresetIntegration(preset.id, { defaultFavcat: newFavcat });
+                                } catch (err) {
+                                  console.error('Failed to update preset integration:', err);
+                                }
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">请选择收藏夹</option>
+                              {favoriteCategories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 默认收藏笔记 */}
+                          <div>
+                            <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                              默认收藏笔记（可选）
+                            </label>
+                            <textarea
+                              value={preset.defaultNote || ''}
+                              onChange={(e) => {
+                                const newNote = e.target.value;
+                                const newPresets = presets.map(p => 
+                                  p.id === preset.id ? { ...p, defaultNote: newNote } : p
+                                );
+                                setPresets(newPresets);
+                              }}
+                              onBlur={async (e) => {
+                                // 失去焦点时保存到数据库
+                                try {
+                                  await api.updatePresetIntegration(preset.id, { defaultNote: e.target.value });
+                                } catch (err) {
+                                  console.error('Failed to update preset integration:', err);
+                                }
+                              }}
+                              placeholder="输入默认笔记（非必须）"
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -803,6 +891,26 @@ function isHentaiAssistantCompatible(url: string): boolean {
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
   } catch {
+    return false;
+  }
+}
+
+// 检查 URL 是否匹配 Hentai Assistant 收藏夹支持的域名（仅 E-Hentai）
+export function isHentaiAssistantFavoriteCompatible(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const isCompatible = HENTAI_ASSISTANT_FAVORITE_DOMAINS.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+    );
+    console.log('[Favorite Check]', {
+      url,
+      hostname: urlObj.hostname,
+      isCompatible,
+      supportedDomains: HENTAI_ASSISTANT_FAVORITE_DOMAINS
+    });
+    return isCompatible;
+  } catch (e) {
+    console.error('[Favorite Check] Invalid URL:', url, e);
     return false;
   }
 }

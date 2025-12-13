@@ -223,6 +223,8 @@ export const api = {
     if (data.enabled !== undefined) payload.enabled = data.enabled;
     if (data.apiUrl !== undefined) payload.api_url = data.apiUrl;
     if (data.config !== undefined) payload.config = data.config;
+    if (data.defaultFavcat !== undefined) payload.default_favcat = data.defaultFavcat;
+    if (data.defaultNote !== undefined) payload.default_note = data.defaultNote;
 
     const response = await fetch(`${API_BASE}/preset-integrations/${id}`, {
       method: 'PUT',
@@ -230,5 +232,24 @@ export const api = {
       body: JSON.stringify(payload),
     });
     return handleResponse<PresetIntegration>(response);
+  },
+
+  // Hentai Assistant 收藏夹相关
+  async getHentaiAssistantFavoriteCategories(apiUrl: string): Promise<{ id: string; name: string }[]> {
+    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/ehentai/favorites/categories`, {
+      method: 'GET',
+      mode: 'cors',
+    });
+    return handleResponse<{ id: string; name: string }[]>(response);
+  },
+
+  async addToHentaiAssistantFavorite(apiUrl: string, url: string, favcat: string, note?: string): Promise<{ success: boolean; message?: string }> {
+    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/ehentai/favorites/addfav`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, favcat, note: note || '' }),
+    });
+    return handleResponse<{ success: boolean; message?: string }>(response);
   },
 };

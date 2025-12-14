@@ -521,41 +521,365 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex">
-      {/* Left Sidebar */}
-      <aside className={`bg-white dark:bg-dark-card border-r border-gray-200 dark:border-dark-border flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-        sidebarCollapsed ? 'w-16' : 'w-64'
-      }`}>
-        {/* Sidebar Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
-          {!sidebarCollapsed && <h1 className="text-lg font-semibold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition ml-auto"
-            title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-          >
-            <svg className="w-5 h-5 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {sidebarCollapsed ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              )}
-            </svg>
-          </button>
-        </div>
-
-        {/* Feed List */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2">
-            {/* All Items */}
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
+      {/* Top Header Bar */}
+      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-6 py-4 sticky top-0 z-50">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Logo and Toggle */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>
             <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+              title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+            >
+              <svg className="w-5 h-5 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {sidebarCollapsed ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          {/* Center: Compact Mode - Horizontal Feed List */}
+          {sidebarCollapsed && (
+            <div className="flex-1 overflow-x-auto">
+              <div className="flex items-center gap-2">
+                {/* All Items */}
+                <button
+                  onClick={() => handleFeedFilter('')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                    selectedFeed === ''
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  <span className="text-sm font-medium">全部</span>
+                </button>
+
+                {/* Favorites */}
+                <button
+                  onClick={() => handleFeedFilter('favorites')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                    selectedFeed === 'favorites'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span className="text-sm font-medium">收藏</span>
+                </button>
+
+                {/* Feed List */}
+                {feeds.map(feed => (
+                  <button
+                    key={feed.id}
+                    onClick={() => handleFeedFilter(feed.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                      selectedFeed === feed.id
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                        : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                    }`}
+                  >
+                    {feed.favicon ? (
+                      <img src={feed.favicon} alt="" className="w-4 h-4 rounded" />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">{feed.title}</span>
+                    {(feed.unreadCount ?? 0) > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded-full">
+                        {feed.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+
+                {/* Add Feed Button */}
+                <button
+                  onClick={() => setShowAddFeed(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-sm font-medium">添加订阅</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Right: Quick Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Image Width Control */}
+            <div className="relative">
+              <button
+                onClick={() => setShowWidthSlider(!showWidthSlider)}
+                className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+                title="调整图片大小"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+              
+              {showWidthSlider && (
+                <div className="absolute right-0 mt-2 p-4 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border z-50 min-w-[280px]">
+                  {/* 图片大小 */}
+                  <div className="mb-4">
+                    <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">图片大小</div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">大</span>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={getCurrentImageWidth()}
+                        onChange={(e) => setCurrentImageWidth(parseInt(e.target.value))}
+                        className="flex-1 h-1.5 bg-gray-300 dark:bg-dark-border rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">小</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-dark-text">{getCurrentImageWidth()} 列</span>
+                        <span className="text-xs text-gray-400 dark:text-dark-text-secondary">
+                          {selectedFeed ? (feedImageWidths[selectedFeed] !== undefined ? '当前订阅' : '跟随全局') : '全局默认'}
+                        </span>
+                      </div>
+                      {selectedFeed && feedImageWidths[selectedFeed] !== undefined && (
+                        <button
+                          onClick={resetFeedImageWidth}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                          title="重置为全局设置"
+                        >
+                          重置
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 分隔线 */}
+                  <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
+
+                  {/* 每页显示项目数 */}
+                  <div className="mb-4">
+                    <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">每页显示</div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="10"
+                        max="100"
+                        step="10"
+                        value={itemsPerPage}
+                        onChange={(e) => setItemsPerPage(Math.max(10, Math.min(100, parseInt(e.target.value) || 20)))}
+                        className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-dark-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text"
+                      />
+                      <span className="text-sm text-gray-600 dark:text-dark-text">项</span>
+                    </div>
+                  </div>
+
+                  {/* 分隔线 */}
+                  <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
+
+                  {/* 排序方式 */}
+                  <div className="mb-4">
+                    <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">排序方式</div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSortBy('published')}
+                        className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
+                          sortBy === 'published'
+                            ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
+                            : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                        }`}
+                      >
+                        发布时间
+                      </button>
+                      <button
+                        onClick={() => setSortBy('created')}
+                        className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
+                          sortBy === 'created'
+                            ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
+                            : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                        }`}
+                      >
+                        抓取时间
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 分隔线 */}
+                  <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
+
+                  {/* 自动加载 */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-text cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoLoadMore}
+                        onChange={(e) => setAutoLoadMore(e.target.checked)}
+                        className="rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>自动加载更多</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Unread Filter Button - hide for favorites */}
+            {selectedFeed !== 'favorites' && (
+              <button
+                onClick={() => setCurrentUnreadFilter(!getCurrentUnreadFilter())}
+                className="p-2 text-gray-500 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+                title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
+              >
+                {getCurrentUnreadFilter() ? (
+                  <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="7" />
+                  </svg>
+                ) : (
+                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="7" />
+                  </svg>
+                )}
+              </button>
+            )}
+            
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
+            <button
+              onClick={() => triggerRefresh()}
+              className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+              title="刷新"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            
+            <Menu as="div" className="relative">
+              <Menu.Button
+                className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+                title="更多操作"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </Menu.Button>
+              
+              <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
+                {selectedFeed !== 'favorites' && (
+                  <Menu.Item>
+                    {({ active }) => {
+                      const hasUnread = selectedFeed 
+                        ? (feeds.find(f => f.id === selectedFeed)?.unreadCount || 0) > 0
+                        : items.some(item => item.isUnread);
+                      return (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          disabled={!hasUnread}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                            active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          标记全部已读
+                        </button>
+                      );
+                    }}
+                  </Menu.Item>
+                )}
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setShowIntegrationSettings(true)}
+                      className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                        active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                      </svg>
+                      集成
+                    </button>
+                  )}
+                </Menu.Item>
+                {selectedFeed && selectedFeed !== 'favorites' && (
+                  <>
+                    <Menu.Item>
+                      {({ active }) => {
+                        const currentFeed = feeds.find(f => f.id === selectedFeed);
+                        return (
+                          <button
+                            onClick={() => currentFeed && handleEditFeed(currentFeed)}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                              active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            编辑订阅
+                          </button>
+                        );
+                      }}
+                    </Menu.Item>
+                    <Menu.Item>
+                      {({ active }) => {
+                        const currentFeed = feeds.find(f => f.id === selectedFeed);
+                        return (
+                          <button
+                            onClick={() => currentFeed && handleDeleteFeed(currentFeed.id, currentFeed.title)}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                              active ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'text-red-600 dark:text-red-400'
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            删除当前订阅
+                          </button>
+                        );
+                      }}
+                    </Menu.Item>
+                  </>
+                )}
+              </Menu.Items>
+            </Menu>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar */}
+        {!sidebarCollapsed && (
+          <aside className="bg-white dark:bg-dark-card border-r border-gray-200 dark:border-dark-border flex flex-col w-64 overflow-y-auto">
+            {/* Feed List */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-2">
+                {/* All Items */}
+                <button
               onClick={() => handleFeedFilter('')}
               className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition flex items-center justify-between group ${
                 selectedFeed === ''
                   ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                   : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
               }`}
-              title={sidebarCollapsed ? '全部' : ''}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -563,9 +887,9 @@ function App() {
                   <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
                   <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
                 </svg>
-                {!sidebarCollapsed && <span className="font-medium">全部</span>}
+                <span className="font-medium">全部</span>
               </div>
-              {!sidebarCollapsed && (() => {
+              {(() => {
                 const totalUnread = feeds.reduce((sum, f) => sum + (f.unreadCount || 0), 0);
                 return totalUnread > 0 ? (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-400 dark:bg-gray-600 text-white">
@@ -583,23 +907,20 @@ function App() {
                   ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                   : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
               }`}
-              title={sidebarCollapsed ? '收藏' : ''}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <svg className="w-5 h-5 flex-shrink-0" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                {!sidebarCollapsed && <span className="font-medium">收藏</span>}
+                <span className="font-medium">收藏</span>
               </div>
             </button>
 
             {/* Feed Items */}
             <div className="mt-4">
-              {!sidebarCollapsed && (
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-dark-text-secondary uppercase tracking-wider">
-                  订阅列表
-                </div>
-              )}
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-dark-text-secondary uppercase tracking-wider">
+                订阅列表
+              </div>
               {feeds.map((feed) => (
                 <button
                   key={feed.id}
@@ -609,7 +930,7 @@ function App() {
                       ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
-                  title={sidebarCollapsed ? feed.title : (feed.lastFetchError ? `⚠️ 抓取失败: ${feed.lastFetchError}` : '')}
+                  title={feed.lastFetchError ? `⚠️ 抓取失败: ${feed.lastFetchError}` : ''}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {feed.favicon ? (
@@ -638,7 +959,7 @@ function App() {
                         <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                       </svg>
                     )}
-                    {!sidebarCollapsed && <span className="truncate text-sm">{feed.title}</span>}
+                    <span className="truncate text-sm">{feed.title}</span>
                     {/* 抓取失败时显示黄色感叹号 */}
                     {feed.lastFetchError && (
                       <span 
@@ -651,311 +972,46 @@ function App() {
                       </span>
                     )}
                   </div>
-                  {!sidebarCollapsed && feed.unreadCount !== undefined && feed.unreadCount > 0 && (
+                  {feed.unreadCount !== undefined && feed.unreadCount > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 bg-gray-400 dark:bg-gray-600 text-white">
                       {feed.unreadCount}
                     </span>
                   )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Add Feed Button */}
-        <div className="p-2 border-t border-gray-200 dark:border-dark-border">
-          <button
-            onClick={async () => {
-              setShowAddFeed(!showAddFeed);
-              if (!showAddFeed) {
-                // 打开对话框时加载集成列表
-                try {
-                  const integrations = await getCustomIntegrationsAsync();
-                  setNewFeedAvailableIntegrations(integrations);
-                  setNewFeedEnabledIntegrations([]); // 默认全部不启用
-                } catch (error) {
-                  console.error('Failed to load integrations:', error);
-                  setNewFeedAvailableIntegrations([]);
-                }
-              }
-            }}
-            className={`w-full py-2 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 ${
-              sidebarCollapsed ? 'justify-center px-0' : 'justify-center px-4'
-            }`}
-            title={sidebarCollapsed ? '添加订阅' : ''}
-          >
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {!sidebarCollapsed && <span>添加订阅</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar */}
-        <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-6 py-4 sticky top-0 z-40">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
-                {selectedFeed === 'favorites'
-                  ? '收藏'
-                  : selectedFeed 
-                    ? feeds.find(f => f.id === selectedFeed)?.title 
-                    : '全部内容'
-                }
-              </h2>
-              <span className="text-sm text-gray-500 dark:text-dark-text-secondary">
-                {items.length} 项
-              </span>
-            </div>
-            
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2">
-              {/* Image Width Control */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowWidthSlider(!showWidthSlider)}
-                  className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                  title="调整图片大小"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-                
-                {showWidthSlider && (
-                  <div className="absolute right-0 mt-2 p-4 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border z-50 min-w-[280px]">
-                    {/* 图片大小 */}
-                    <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">图片大小</div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">大</span>
-                        <input
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={getCurrentImageWidth()}
-                          onChange={(e) => setCurrentImageWidth(parseInt(e.target.value))}
-                          className="flex-1 h-1.5 bg-gray-300 dark:bg-dark-border rounded-lg appearance-none cursor-pointer accent-blue-600"
-                        />
-                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">小</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600 dark:text-dark-text">{getCurrentImageWidth()} 列</span>
-                          <span className="text-xs text-gray-400 dark:text-dark-text-secondary">
-                            {selectedFeed ? (feedImageWidths[selectedFeed] !== undefined ? '当前订阅' : '跟随全局') : '全局默认'}
-                          </span>
-                        </div>
-                        {selectedFeed && feedImageWidths[selectedFeed] !== undefined && (
-                          <button
-                            onClick={resetFeedImageWidth}
-                            className="text-xs text-blue-600 hover:text-blue-700"
-                            title="重置为全局设置"
-                          >
-                            重置
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 分隔线 */}
-                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
-
-                    {/* 每页显示项目数 */}
-                    <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">每页显示</div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="10"
-                          max="100"
-                          step="10"
-                          value={itemsPerPage}
-                          onChange={(e) => setItemsPerPage(Math.max(10, Math.min(100, parseInt(e.target.value) || 20)))}
-                          className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-dark-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text"
-                        />
-                        <span className="text-sm text-gray-600 dark:text-dark-text">项</span>
-                      </div>
-                    </div>
-
-                    {/* 分隔线 */}
-                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
-
-                    {/* 排序方式 */}
-                    <div className="mb-4">
-                      <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">排序方式</div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSortBy('published')}
-                          className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
-                            sortBy === 'published'
-                              ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
-                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
-                          }`}
-                        >
-                          发布时间
-                        </button>
-                        <button
-                          onClick={() => setSortBy('created')}
-                          className={`flex-1 px-3 py-1.5 text-xs rounded transition ${
-                            sortBy === 'created'
-                              ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
-                              : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
-                          }`}
-                        >
-                          抓取时间
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 分隔线 */}
-                    <div className="border-t border-gray-200 dark:border-dark-border my-4"></div>
-
-                    {/* 自动加载 */}
-                    <div>
-                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-text cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={autoLoadMore}
-                          onChange={(e) => setAutoLoadMore(e.target.checked)}
-                          className="rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>自动加载更多</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
+                  </button>
+                ))}
               </div>
-              
-              {/* Unread Filter Button - hide for favorites */}
-              {selectedFeed !== 'favorites' && (
-                <button
-                  onClick={() => setCurrentUnreadFilter(!getCurrentUnreadFilter())}
-                  className="p-2 text-gray-500 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                  title={getCurrentUnreadFilter() ? '显示全部' : '仅显示未读'}
-                >
-                  {getCurrentUnreadFilter() ? (
-                    <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 20 20">
-                      <circle cx="10" cy="10" r="7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
-                      <circle cx="10" cy="10" r="7" />
-                    </svg>
-                  )}
-                </button>
-              )}
-              
-              {/* Theme Toggle */}
-              <ThemeToggle />
-              
-              <button
-                onClick={() => triggerRefresh()}
-                className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                title="刷新"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              
-              <Menu as="div" className="relative">
-                <Menu.Button
-                  className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                  title="更多操作"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </Menu.Button>
-                
-                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
-                  {selectedFeed !== 'favorites' && (
-                    <Menu.Item>
-                      {({ active }) => {
-                        const hasUnread = selectedFeed 
-                          ? (feeds.find(f => f.id === selectedFeed)?.unreadCount || 0) > 0
-                          : items.some(item => item.isUnread);
-                        return (
-                          <button
-                            onClick={handleMarkAllAsRead}
-                            disabled={!hasUnread}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                              active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            标记全部已读
-                          </button>
-                        );
-                      }}
-                    </Menu.Item>
-                  )}
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={() => setShowIntegrationSettings(true)}
-                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                          active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
-                        }`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-                        </svg>
-                        集成
-                      </button>
-                    )}
-                  </Menu.Item>
-                  {selectedFeed && selectedFeed !== 'favorites' && (
-                    <>
-                      <Menu.Item>
-                        {({ active }) => {
-                          const currentFeed = feeds.find(f => f.id === selectedFeed);
-                          return (
-                            <button
-                              onClick={() => currentFeed && handleEditFeed(currentFeed)}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
-                              }`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              编辑订阅
-                            </button>
-                          );
-                        }}
-                      </Menu.Item>
-                      <Menu.Item>
-                        {({ active }) => {
-                          const currentFeed = feeds.find(f => f.id === selectedFeed);
-                          return (
-                            <button
-                              onClick={() => currentFeed && handleDeleteFeed(currentFeed.id, currentFeed.title)}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                active ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'text-red-600 dark:text-red-400'
-                              }`}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              删除当前订阅
-                            </button>
-                          );
-                        }}
-                      </Menu.Item>
-                    </>
-                  )}
-                </Menu.Items>
-              </Menu>
             </div>
-          </div>
-        </header>
+            </div>
+
+            {/* Add Feed Button */}
+            <div className="p-2 border-t border-gray-200 dark:border-dark-border">
+              <button
+                onClick={async () => {
+                  setShowAddFeed(!showAddFeed);
+                  if (!showAddFeed) {
+                    try {
+                      const integrations = await getCustomIntegrationsAsync();
+                      setNewFeedAvailableIntegrations(integrations);
+                      setNewFeedEnabledIntegrations([]);
+                    } catch (error) {
+                      console.error('Failed to load integrations:', error);
+                      setNewFeedAvailableIntegrations([]);
+                    }
+                  }
+                }}
+                className="w-full py-2 bg-gray-200 dark:bg-dark-hover text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-dark-border transition flex items-center gap-2 justify-center px-4"
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>添加订阅</span>
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Add Feed Modal/Form */}
         {showAddFeed && (
@@ -1190,25 +1246,25 @@ function App() {
           </div>
         )}
 
-        {/* Gallery Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {isLoading && page === 1 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="text-center py-16">
-              <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-dark-text">暂无内容</h3>
-              <p className="mt-2 text-gray-500 dark:text-dark-text-secondary">
-                {feeds.length === 0 ? '请先添加RSS订阅源' : '该订阅源暂无内容'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <ImageWall 
+          {/* Gallery Content */}
+          <main className="flex-1 overflow-y-auto p-6">
+            {isLoading && page === 1 ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-16">
+                <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-dark-text">暂无内容</h3>
+                <p className="mt-2 text-gray-500 dark:text-dark-text-secondary">
+                  {feeds.length === 0 ? '请先添加RSS订阅源' : '该订阅源暂无内容'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <ImageWall 
                 items={items} 
                 onItemClick={handleItemClick} 
                 columnsCount={getCurrentImageWidth()}
@@ -1250,7 +1306,8 @@ function App() {
               )}
             </>
           )}
-        </main>
+          </main>
+        </div>
       </div>
 
       {/* Modal */}

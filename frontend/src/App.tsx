@@ -1,13 +1,65 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
+import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
 import { api } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
-import ThemeToggle from './components/ThemeToggle';
 import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent } from './components/IntegrationSettings';
 
+type Theme = 'system' | 'light' | 'dark';
+
+// 获取系统主题
+function getSystemTheme(): 'light' | 'dark' {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
+// 应用主题到 HTML 元素
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+  
+  if (effectiveTheme === 'dark') {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+}
+
+// 初始化时立即应用主题（避免闪烁）
+function getInitialTheme(): Theme {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('theme') as Theme | null;
+    const theme: Theme = (saved === 'system' || saved === 'light' || saved === 'dark') ? saved : 'system';
+    applyTheme(theme);
+    return theme;
+  }
+  return 'system';
+}
+
 function App() {
+    const [theme, setTheme] = useState<Theme>(getInitialTheme);
+    // 边栏模式：'auto' | 'sidebar' | 'topbar'
+    const [sidebarMode, setSidebarMode] = useState<'auto' | 'sidebar' | 'topbar'>(() => {
+      const saved = localStorage.getItem('sidebarMode');
+      if (saved && ['auto', 'sidebar', 'topbar'].includes(saved)) {
+        return saved as 'auto' | 'sidebar' | 'topbar';
+      }
+      // 向后兼容：从旧的sidebarCollapsed迁移
+      const oldCollapsed = localStorage.getItem('sidebarCollapsed');
+      if (oldCollapsed !== null) {
+        return oldCollapsed === 'true' ? 'topbar' : 'sidebar';
+      }
+      return 'auto';
+    });
+    // sidebarCollapsed状态，只在智能模式下自动管理
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved === 'true';
+    });
   const [items, setItems] = useState<FeedItem[]>([]);
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
@@ -20,10 +72,46 @@ function App() {
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [newFeedEnabledIntegrations, setNewFeedEnabledIntegrations] = useState<string[] | null>(null);
   const [newFeedAvailableIntegrations, setNewFeedAvailableIntegrations] = useState<CustomIntegration[]>([]);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return saved === 'true';
-  });
+    // 智能模式：根据屏幕宽度自动切换
+    useEffect(() => {
+      if (sidebarMode !== 'auto') return;
+      const handleResize = () => {
+        setSidebarCollapsed(window.innerWidth < 900);
+      };
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, [sidebarMode]);
+
+    // 保存 sidebarMode 到 localStorage
+    useEffect(() => {
+      localStorage.setItem('sidebarMode', sidebarMode);
+    }, [sidebarMode]);
+
+    // 保存 sidebarCollapsed 到 localStorage（只在非智能模式下）
+    useEffect(() => {
+      if (sidebarMode !== 'auto') {
+        localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+      }
+    }, [sidebarCollapsed, sidebarMode]);
+
+  // 应用主题
+  useEffect(() => {
+    applyTheme(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // 监听系统主题变化
+  useEffect(() => {
+    if (theme !== 'system') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme('system');
+    mediaQuery.addEventListener('change', handleChange);
+    
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
+
   const [imageWidth, setImageWidth] = useState(() => {
     const saved = localStorage.getItem('imageWidth');
     return saved ? parseInt(saved) : 5; // Default to medium (5 columns)
@@ -129,17 +217,7 @@ function App() {
     handleFeedFilter(feedId);
   };
 
-  const handleAddFeedClickWithDragCheck = () => {
-    if (hasDraggedRef.current) {
-      return;
-    }
-    setShowAddFeed(true);
-  };
-
-  // Save sidebar state to localStorage
-  useEffect(() => {
-    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
-  }, [sidebarCollapsed]);
+  // 已移除未使用的 handleAddFeedClickWithDragCheck
 
   // Save auto load more preference to localStorage
   useEffect(() => {
@@ -588,7 +666,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
       {/* Top Header Bar */}
-      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-6 py-4 sticky top-0 z-50">
+      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
@@ -606,35 +684,31 @@ function App() {
               onMouseUp={handleMouseUp}
               onMouseMove={handleMouseMove}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {/* All Items */}
                 <button
                   onClick={() => handleFeedClickWithDragCheck('')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg transition ${
                     selectedFeed === ''
                       ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  <span className="text-sm font-medium">全部</span>
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className={`text-sm font-medium ${sidebarCollapsed ? 'hidden' : ''}`}>全部</span>
                 </button>
 
                 {/* Favorites */}
                 <button
                   onClick={() => handleFeedClickWithDragCheck('favorites')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg transition ${
                     selectedFeed === 'favorites'
                       ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
                       : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  <span className="text-sm font-medium">收藏</span>
+                  <Star className="w-4 h-4" />
+                  <span className={`text-sm font-medium ${sidebarCollapsed ? 'hidden' : ''}`}>收藏</span>
                 </button>
 
                 {/* Feed List */}
@@ -658,30 +732,19 @@ function App() {
                     <span className="text-sm font-medium flex items-center">
                       {feed.title}
                       {(feed.unreadCount ?? 0) > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-400 dark:bg-gray-600 text-white rounded-full align-middle inline-block">
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-400 dark:bg-gray-600 text-white rounded-full align-middle inline-block flex-shrink-0">
                           {feed.unreadCount}
                         </span>
                       )}
                     </span>
                   </button>
                 ))}
-
-                {/* Add Feed Button */}
-                <button
-                  onClick={handleAddFeedClickWithDragCheck}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border transition"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-sm font-medium">添加订阅</span>
-                </button>
               </div>
             </div>
           )}
 
           {/* Right: Quick Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Image Width Control */}
             <div className="relative">
               <button
@@ -818,9 +881,6 @@ function App() {
               </button>
             )}
             
-            {/* Theme Toggle */}
-            <ThemeToggle />
-            
             <button
               onClick={() => triggerRefresh()}
               className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
@@ -842,45 +902,19 @@ function App() {
               </Menu.Button>
               
               <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
-                                <div className="flex gap-4 px-4 py-2 justify-center">
-                                  {/* 侧边栏模式按钮 */}
-                                  <button
-                                    onClick={() => setSidebarCollapsed(false)}
-                                    className={`flex flex-col items-center focus:outline-none`}
-                                    title="侧边栏模式"
-                                  >
-                                    <span className={`w-10 h-10 rounded-lg flex items-center justify-center mb-1 transition-colors
-                                      ${!sidebarCollapsed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                    >
-                                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
-                                        <rect x="3" y="4" width="18" height="16" rx="2" fill="white" fillOpacity="0.15" />
-                                        <rect x="3" y="4" width="18" height="16" rx="2" stroke="white" strokeWidth="1.5" />
-                                        <line x1="8" y1="5" x2="8" y2="19" stroke="white" strokeWidth="1.2" />
-                                        <rect x="4.5" y="6" width="2.5" height="1.2" rx="0.6" fill="white" />
-                                        <rect x="4.5" y="10.2" width="2.5" height="1.2" rx="0.6" fill="white" />
-                                        <rect x="4.5" y="14.4" width="2.5" height="1.2" rx="0.6" fill="white" />
-                                      </svg>
-                                    </span>
-                                    <span className={`text-xs mt-0.5 ${!sidebarCollapsed ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}`}>侧边栏</span>
-                                  </button>
-                                  {/* 顶栏模式按钮 */}
-                                  <button
-                                    onClick={() => setSidebarCollapsed(true)}
-                                    className={`flex flex-col items-center focus:outline-none`}
-                                    title="顶栏模式"
-                                  >
-                                    <span className={`w-10 h-10 rounded-lg flex items-center justify-center mb-1 transition-colors
-                                      ${sidebarCollapsed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                    >
-                                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
-                                        <rect x="3" y="4" width="18" height="16" rx="2" fill="white" fillOpacity="0.15" />
-                                        <rect x="3" y="4" width="18" height="16" rx="2" stroke="white" strokeWidth="1.5" />
-                                        <rect x="4.5" y="6" width="15" height="1.2" rx="0.6" fill="white" />
-                                      </svg>
-                                    </span>
-                                    <span className={`text-xs mt-0.5 ${sidebarCollapsed ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}`}>顶栏</span>
-                                  </button>
-                                </div>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setShowAddFeed(true)}
+                      className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                        active ? 'bg-gray-50 dark:bg-dark-hover text-gray-900 dark:text-dark-text' : 'text-gray-700 dark:text-dark-text'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      添加订阅
+                    </button>
+                  )}
+                </Menu.Item>
                 {selectedFeed !== 'favorites' && (
                   <Menu.Item>
                     {({ active }) => {
@@ -959,6 +993,87 @@ function App() {
                     </Menu.Item>
                   </>
                 )}
+
+                <div className="px-6 py-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">边栏样式</div>
+                  <div className="grid grid-cols-3 gap-x-5 gap-y-2 justify-items-center">
+                    {/* 智能模式按钮 */}
+                    <button
+                      onClick={() => {
+                        setSidebarMode('auto');
+                        // 在智能模式下，sidebarCollapsed会由useEffect自动管理
+                      }}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${sidebarMode === 'auto' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="智能模式（自动切换）"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
+                    {/* 侧边栏模式按钮 */}
+                    <button
+                      onClick={() => {
+                        setSidebarMode('sidebar');
+                        setSidebarCollapsed(false);
+                      }}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${sidebarMode === 'sidebar' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="侧边栏模式"
+                    >
+                      <PanelLeft className="w-4 h-4" />
+                    </button>
+                    {/* 顶栏模式按钮 */}
+                    <button
+                      onClick={() => {
+                        setSidebarMode('topbar');
+                        setSidebarCollapsed(true);
+                      }}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${sidebarMode === 'topbar' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="顶栏模式"
+                    >
+                      <PanelTop className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-6 py-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">主题设置</div>
+                  <div className="grid grid-cols-3 gap-x-5 gap-y-2 justify-items-center">
+                    {/* 跟随系统按钮 */}
+                    <button
+                      onClick={() => setTheme('system')}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${theme === 'system' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="跟随系统"
+                    >
+                      <SunMoon className="w-4 h-4" />
+                    </button>
+                    {/* 浅色按钮 */}
+                    <button
+                      onClick={() => setTheme('light')}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${theme === 'light' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="浅色"
+                    >
+                      <Sun className="w-4 h-4" />
+                    </button>
+                    {/* 深色按钮 */}
+                    <button
+                      onClick={() => setTheme('dark')}
+                      className={`w-12 h-10 flex items-center justify-center focus:outline-none rounded-lg transition-colors select-none
+                        ${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-gray-500 dark:text-gray-400'}`}
+                      style={{padding: 0, margin: 0, boxSizing: 'border-box'}}
+                      title="深色"
+                    >
+                      <Moon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </Menu.Items>
             </Menu>
           </div>
@@ -967,9 +1082,9 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
+        {/* Left Sidebar - Fixed Position */}
         {!sidebarCollapsed && (
-          <aside className="bg-white dark:bg-dark-card flex flex-col w-64 overflow-y-auto select-none" style={{ userSelect: 'none' }}>
+          <aside className="fixed left-4 top-4 bottom-4 bg-white dark:bg-dark-card flex flex-col w-64 overflow-y-auto select-none z-40 mt-16 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border" style={{ userSelect: 'none' }}>
             {/* Feed List */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-2">
@@ -983,11 +1098,7 @@ function App() {
               }`}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                  <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                  <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-                </svg>
+                <LayoutGrid className="w-5 h-5 flex-shrink-0" />
                 <span className="font-medium">全部</span>
               </div>
               {(() => {
@@ -1010,9 +1121,7 @@ function App() {
               }`}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <svg className="w-5 h-5 flex-shrink-0" fill={selectedFeed === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
+                <Star className="w-5 h-5 flex-shrink-0" />
                 <span className="font-medium">收藏</span>
               </div>
             </button>
@@ -1112,7 +1221,7 @@ function App() {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${!sidebarCollapsed ? 'ml-[17rem]' : ''}`}>
 
         {/* Add Feed Modal/Form */}
         {showAddFeed && (

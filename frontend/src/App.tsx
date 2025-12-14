@@ -71,6 +71,71 @@ function App() {
   const loadMoreButtonRef = useRef<HTMLDivElement>(null);
   const fetchVersionRef = useRef(0); // 用于追踪请求版本，避免竞态条件
 
+  // Drag scrolling for compact mode feed list
+  const compactFeedListRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!compactFeedListRef.current) return;
+    
+    setIsDragging(true);
+    hasDraggedRef.current = false;
+    dragStartXRef.current = e.pageX - compactFeedListRef.current.offsetLeft;
+    scrollLeftRef.current = compactFeedListRef.current.scrollLeft;
+    if (compactFeedListRef.current) {
+      compactFeedListRef.current.style.cursor = 'grabbing';
+      compactFeedListRef.current.style.userSelect = 'none';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    if (compactFeedListRef.current) {
+      compactFeedListRef.current.style.cursor = 'grab';
+      compactFeedListRef.current.style.userSelect = '';
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (compactFeedListRef.current) {
+      compactFeedListRef.current.style.cursor = 'grab';
+      compactFeedListRef.current.style.userSelect = '';
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !compactFeedListRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - compactFeedListRef.current.offsetLeft;
+    const walk = (x - dragStartXRef.current) * 1; // Scroll speed multiplier
+    
+    // Mark as dragged if moved more than 5px
+    if (Math.abs(walk) > 5) {
+      hasDraggedRef.current = true;
+    }
+    
+    compactFeedListRef.current.scrollLeft = scrollLeftRef.current - walk;
+  };
+
+  // Prevent click when dragging
+  const handleFeedClickWithDragCheck = (feedId: string) => {
+    if (hasDraggedRef.current) {
+      return;
+    }
+    handleFeedFilter(feedId);
+  };
+
+  const handleAddFeedClickWithDragCheck = () => {
+    if (hasDraggedRef.current) {
+      return;
+    }
+    setShowAddFeed(true);
+  };
+
   // Save sidebar state to localStorage
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
@@ -528,32 +593,27 @@ function App() {
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
             <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-              title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-            >
-              <svg className="w-5 h-5 text-gray-600 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {sidebarCollapsed ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                )}
-              </svg>
-            </button>
           </div>
 
           {/* Center: Compact Mode - Horizontal Feed List */}
           {sidebarCollapsed && (
-            <div className="flex-1 overflow-x-auto">
+            <div 
+              ref={compactFeedListRef}
+              className="flex-1 overflow-x-auto scrollbar-hide select-none"
+              style={{ cursor: 'grab', userSelect: 'none' }}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeave}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+            >
               <div className="flex items-center gap-2">
                 {/* All Items */}
                 <button
-                  onClick={() => handleFeedFilter('')}
+                  onClick={() => handleFeedClickWithDragCheck('')}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
                     selectedFeed === ''
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                      ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                      : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -564,11 +624,11 @@ function App() {
 
                 {/* Favorites */}
                 <button
-                  onClick={() => handleFeedFilter('favorites')}
+                  onClick={() => handleFeedClickWithDragCheck('favorites')}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
                     selectedFeed === 'favorites'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                      : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                      ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                      : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                   }`}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -581,11 +641,11 @@ function App() {
                 {feeds.map(feed => (
                   <button
                     key={feed.id}
-                    onClick={() => handleFeedFilter(feed.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+                    onClick={() => handleFeedClickWithDragCheck(feed.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap transition relative ${
                       selectedFeed === feed.id
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                        : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                        ? 'bg-gray-200 dark:bg-dark-hover text-gray-900 dark:text-dark-text'
+                        : 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover'
                     }`}
                   >
                     {feed.favicon ? (
@@ -595,18 +655,20 @@ function App() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
                       </svg>
                     )}
-                    <span className="text-sm font-medium">{feed.title}</span>
-                    {(feed.unreadCount ?? 0) > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded-full">
-                        {feed.unreadCount}
-                      </span>
-                    )}
+                    <span className="text-sm font-medium flex items-center">
+                      {feed.title}
+                      {(feed.unreadCount ?? 0) > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-400 dark:bg-gray-600 text-white rounded-full align-middle inline-block">
+                          {feed.unreadCount}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 ))}
 
                 {/* Add Feed Button */}
                 <button
-                  onClick={() => setShowAddFeed(true)}
+                  onClick={handleAddFeedClickWithDragCheck}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg whitespace-nowrap bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border transition"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -780,6 +842,45 @@ function App() {
               </Menu.Button>
               
               <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border py-1 focus:outline-none">
+                                <div className="flex gap-4 px-4 py-2 justify-center">
+                                  {/* 侧边栏模式按钮 */}
+                                  <button
+                                    onClick={() => setSidebarCollapsed(false)}
+                                    className={`flex flex-col items-center focus:outline-none`}
+                                    title="侧边栏模式"
+                                  >
+                                    <span className={`w-10 h-10 rounded-lg flex items-center justify-center mb-1 transition-colors
+                                      ${!sidebarCollapsed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                    >
+                                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                        <rect x="3" y="4" width="18" height="16" rx="2" fill="white" fillOpacity="0.15" />
+                                        <rect x="3" y="4" width="18" height="16" rx="2" stroke="white" strokeWidth="1.5" />
+                                        <line x1="8" y1="5" x2="8" y2="19" stroke="white" strokeWidth="1.2" />
+                                        <rect x="4.5" y="6" width="2.5" height="1.2" rx="0.6" fill="white" />
+                                        <rect x="4.5" y="10.2" width="2.5" height="1.2" rx="0.6" fill="white" />
+                                        <rect x="4.5" y="14.4" width="2.5" height="1.2" rx="0.6" fill="white" />
+                                      </svg>
+                                    </span>
+                                    <span className={`text-xs mt-0.5 ${!sidebarCollapsed ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}`}>侧边栏</span>
+                                  </button>
+                                  {/* 顶栏模式按钮 */}
+                                  <button
+                                    onClick={() => setSidebarCollapsed(true)}
+                                    className={`flex flex-col items-center focus:outline-none`}
+                                    title="顶栏模式"
+                                  >
+                                    <span className={`w-10 h-10 rounded-lg flex items-center justify-center mb-1 transition-colors
+                                      ${sidebarCollapsed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                    >
+                                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                        <rect x="3" y="4" width="18" height="16" rx="2" fill="white" fillOpacity="0.15" />
+                                        <rect x="3" y="4" width="18" height="16" rx="2" stroke="white" strokeWidth="1.5" />
+                                        <rect x="4.5" y="6" width="15" height="1.2" rx="0.6" fill="white" />
+                                      </svg>
+                                    </span>
+                                    <span className={`text-xs mt-0.5 ${sidebarCollapsed ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}`}>顶栏</span>
+                                  </button>
+                                </div>
                 {selectedFeed !== 'favorites' && (
                   <Menu.Item>
                     {({ active }) => {
@@ -868,7 +969,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
         {!sidebarCollapsed && (
-          <aside className="bg-white dark:bg-dark-card border-r border-gray-200 dark:border-dark-border flex flex-col w-64 overflow-y-auto">
+          <aside className="bg-white dark:bg-dark-card flex flex-col w-64 overflow-y-auto select-none" style={{ userSelect: 'none' }}>
             {/* Feed List */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-2">

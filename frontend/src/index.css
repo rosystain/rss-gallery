@@ -33,3 +33,13 @@ html {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #5a5a5a;
 }
+
+/* Hide scrollbar for drag-scrolling elements */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

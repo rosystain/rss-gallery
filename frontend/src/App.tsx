@@ -165,8 +165,7 @@ function App() {
   const dragStartXRef = useRef(0);
   const scrollLeftRef = useRef(0);
   const hasDraggedRef = useRef(false);
-  // 响应式状态：检测是否为紧凑模式（小屏幕）
-  const [isCompactMode, setIsCompactMode] = useState(() => window.innerWidth < 680);
+
 
   // 侧边栏拖动调整
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -270,14 +269,7 @@ function App() {
     };
   }, [isResizingSidebar, sidebarWidth]);
 
-  // 监听窗口大小变化，更新紧凑模式状态
-  useEffect(() => {
-    const handleResize = () => {
-      setIsCompactMode(window.innerWidth < 680);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
 
 
   // 已移除未使用的 handleAddFeedClickWithDragCheck

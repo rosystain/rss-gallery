@@ -26,7 +26,7 @@ function stripHtml(html: string): string {
 // 解析分类字段（可能是JSON数组或逗号分隔的字符串）
 function parseCategories(categories: string): string[] {
   if (!categories) return [];
-  
+
   // 尝试解析为 JSON 数组
   try {
     const parsed = JSON.parse(categories);
@@ -36,7 +36,7 @@ function parseCategories(categories: string): string[] {
   } catch {
     // 不是 JSON，按逗号分隔处理
   }
-  
+
   // 按逗号分隔处理
   return categories.split(',').map(c => c.trim()).filter(Boolean);
 }
@@ -46,21 +46,21 @@ function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return '刚刚';
   }
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
     return `${diffInMinutes}分钟前`;
   }
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
     return `${diffInHours}小时前`;
   }
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays === 1) {
     return '昨天';
@@ -71,17 +71,17 @@ function formatRelativeTime(dateString: string): string {
   if (diffInDays < 7) {
     return `${diffInDays}天前`;
   }
-  
+
   const diffInWeeks = Math.floor(diffInDays / 7);
   if (diffInWeeks < 4) {
     return `${diffInWeeks}周前`;
   }
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   if (diffInMonths < 12) {
     return `${diffInMonths}个月前`;
   }
-  
+
   const diffInYears = Math.floor(diffInDays / 365);
   return `${diffInYears}年前`;
 }
@@ -131,10 +131,10 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   const handleRetryClick = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止触发卡片点击
     if (imageState === 'retrying' || retryCount >= 3) return;
-    
+
     setImageState('retrying');
     setRetryCount(prev => prev + 1);
-    
+
     try {
       const newThumbnail = await onRetry(item.id);
       if (newThumbnail) {
@@ -162,7 +162,7 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   if (imageState === 'error') {
     // 加载失败，显示重试按钮
     return (
-      <div 
+      <div
         className="w-full aspect-[4/3] flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-neutral-700 dark:to-neutral-800 cursor-pointer hover:from-gray-200 hover:to-gray-300 dark:hover:from-neutral-600 dark:hover:to-neutral-700 transition-colors"
         onClick={handleRetryClick}
       >
@@ -218,7 +218,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
-  
+
   // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
@@ -246,12 +246,12 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
     loadPresetIntegrations();
   }, [refreshIntegrationsTrigger]);
-  
+
   // 根据 item 的 feed 设置获取该 item 应该显示的集成列表
   const getItemIntegrations = useCallback((item: FeedItem): CustomIntegration[] => {
     // 获取该 item 所属 feed 的 enabledIntegrations
     const itemEnabledIntegrations = item.feed?.enabledIntegrations;
-    
+
     if (itemEnabledIntegrations === undefined) {
       // feed 信息不完整，不显示任何集成
       return [];
@@ -269,7 +269,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     if (!item.link) return [];
     return getPresetActions(presetIntegrations, item.link);
   }, [presetIntegrations]);
-  
+
   // 生成稳定的 items ID 列表
   const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
 
@@ -293,25 +293,25 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     // 检查哪些卡片已被"看过"
     const checkViewedItems = () => {
       if (isInitializing) return;
-      
+
       // 获取当前滚动位置（视口顶部相对于文档的位置）
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       // 水位线：视口顶部位置 + 一点缓冲（用户至少看过视口高度的 20%）
       const waterline = scrollTop + window.innerHeight * 0.2;
-      
+
       // 检查所有卡片
       const cards = document.querySelectorAll('[data-item-id]');
       cards.forEach((card) => {
         const itemId = card.getAttribute('data-item-id');
         if (!itemId) return;
-        
+
         // 已经标记过的跳过
         if (viewedItemsRef.current.has(itemId)) return;
-        
+
         // 获取卡片位置（相对于文档）
         const rect = card.getBoundingClientRect();
         const cardBottom = rect.bottom + scrollTop; // 卡片底部相对于文档的位置
-        
+
         // 如果卡片底部在水位线之上，说明用户已经滚过这张卡片
         if (cardBottom < waterline) {
           onItemViewed(itemId);
@@ -331,7 +331,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
     // 监听滚动事件
     window.addEventListener('scroll', throttledCheck, { passive: true });
-    
+
     // 组件挂载后也检查一次（处理页面已经滚动的情况）
     const mountCheck = setTimeout(() => {
       checkViewedItems();
@@ -403,7 +403,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   // 处理分享（复制链接）
   const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {
     e.stopPropagation(); // 阻止触发卡片点击
-    
+
     if (item.link) {
       navigator.clipboard.writeText(item.link).then(() => {
         setCopiedItemId(item.id);
@@ -419,13 +419,13 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   // 处理收藏切换
   const handleToggleFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem) => {
     e.stopPropagation(); // 阻止触发卡片点击
-    
+
     setFavoritingItemId(item.id);
-    
+
     // 乐观更新：立即更新UI
     const newFavoriteState = !item.isFavorite;
     onItemUpdated?.(item.id, { isFavorite: newFavoriteState });
-    
+
     try {
       const result = await api.toggleFavorite(item.id);
       // API 返回的状态应该与我们的乐观更新一致
@@ -445,21 +445,21 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   // 处理集成执行
   const handleExecuteIntegration = useCallback(async (e: React.MouseEvent, item: FeedItem, integration: CustomIntegration) => {
     e.stopPropagation(); // 阻止触发卡片点击
-    
+
     setExecutingIntegration(integration.id);
-    
+
     // 清除之前的定时器
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
     }
-    
+
     try {
       const result = await executeIntegration(integration, {
         url: item.link || '',
         title: item.title || '',
       });
-      
+
       // 只有 Webhook 类型才记录历史和显示 toast
       if (integration.type === 'webhook') {
         const historyEntry = {
@@ -467,26 +467,26 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
           type: result.success ? 'success' as const : 'error' as const,
           integrationName: integration.name,
           message: result.success ? `${integration.name} 执行成功` : `${integration.name} 执行失败`,
-          detail: result.success 
-            ? (result.response 
-                ? (typeof result.response === 'string' 
-                    ? result.response 
-                    : JSON.stringify(result.response, null, 2))
-                : undefined)
+          detail: result.success
+            ? (result.response
+              ? (typeof result.response === 'string'
+                ? result.response
+                : JSON.stringify(result.response, null, 2))
+              : undefined)
             : result.message,
           timestamp: new Date(),
         };
-        
+
         // 通过回调添加到历史记录
         onAddExecutionHistory?.(historyEntry);
-        
-        setToast({ 
-          type: historyEntry.type, 
+
+        setToast({
+          type: historyEntry.type,
           message: historyEntry.message,
           detail: historyEntry.detail
         });
         setToastExpanded(false);
-        
+
         // 5秒后自动关闭（仅在未展开时）
         toastTimerRef.current = setTimeout(() => {
           setToast(prev => {
@@ -510,17 +510,17 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
           detail: errorMessage,
           timestamp: new Date(),
         };
-        
+
         // 通过回调添加到历史记录
         onAddExecutionHistory?.(historyEntry);
-        
-        setToast({ 
-          type: 'error', 
+
+        setToast({
+          type: 'error',
           message: historyEntry.message,
           detail: errorMessage
         });
         setToastExpanded(false);
-        
+
         toastTimerRef.current = setTimeout(() => {
           if (!toastExpanded) {
             setToast(null);
@@ -528,54 +528,54 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         }, 5000);
       }
     }
-    
+
     setTimeout(() => {
       setExecutingIntegration(null);
     }, 500);
   }, [toastExpanded, onAddExecutionHistory]);
-  
+
   // 处理预设集成 action 执行
   const handleExecutePresetAction = useCallback(async (e: React.MouseEvent, item: FeedItem, preset: PresetIntegration) => {
     e.stopPropagation(); // 阻止触发卡片点击
-    
+
     setExecutingPreset(preset.id);
-    
+
     // 清除现有的 toast 定时器
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
     }
-    
+
     try {
       const result = await executePresetAction(preset, {
         url: item.link || '',
         title: item.title || '',
       });
-      
+
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: result.success ? 'success' as const : 'error' as const,
         integrationName: preset.name || preset.id,
         message: result.success ? `${preset.name || preset.id} 执行成功` : `${preset.name || preset.id} 执行失败`,
-        detail: result.success 
-          ? (result.response 
-              ? (typeof result.response === 'string' 
-                  ? result.response 
-                  : JSON.stringify(result.response, null, 2))
-              : undefined)
+        detail: result.success
+          ? (result.response
+            ? (typeof result.response === 'string'
+              ? result.response
+              : JSON.stringify(result.response, null, 2))
+            : undefined)
           : result.message,
         timestamp: new Date(),
       };
-      
+
       onAddExecutionHistory?.(historyEntry);
-      
-      setToast({ 
-        type: historyEntry.type, 
+
+      setToast({
+        type: historyEntry.type,
         message: historyEntry.message,
         detail: historyEntry.detail
       });
       setToastExpanded(false);
-      
+
       toastTimerRef.current = setTimeout(() => {
         if (!toastExpanded) {
           setToast(null);
@@ -591,23 +591,23 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         detail: errorMessage,
         timestamp: new Date(),
       };
-      
+
       onAddExecutionHistory?.(historyEntry);
-      
-      setToast({ 
-        type: 'error', 
+
+      setToast({
+        type: 'error',
         message: historyEntry.message,
         detail: errorMessage
       });
       setToastExpanded(false);
-      
+
       toastTimerRef.current = setTimeout(() => {
         if (!toastExpanded) {
           setToast(null);
         }
       }, 5000);
     }
-    
+
     setTimeout(() => {
       setExecutingPreset(null);
     }, 500);
@@ -616,20 +616,20 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   // 处理添加到收藏夹
   const handleAddToFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem, preset: PresetIntegration) => {
     e.stopPropagation(); // 阻止触发卡片点击
-    
+
     if (!preset.apiUrl || !preset.defaultFavcat) {
       alert('请先在设置中配置收藏夹');
       return;
     }
-    
+
     setAddingToFavorite(item.id);
-    
+
     // 清除现有的 toast 定时器
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
     }
-    
+
     try {
       const result = await api.addToHentaiAssistantFavorite(
         preset.apiUrl,
@@ -637,7 +637,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         preset.defaultFavcat,
         preset.defaultNote
       );
-      
+
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         type: result.success ? 'success' as const : 'error' as const,
@@ -646,16 +646,16 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         detail: result.message,
         timestamp: new Date(),
       };
-      
+
       onAddExecutionHistory?.(historyEntry);
-      
-      setToast({ 
-        type: historyEntry.type, 
+
+      setToast({
+        type: historyEntry.type,
         message: historyEntry.message,
         detail: historyEntry.detail
       });
       setToastExpanded(false);
-      
+
       toastTimerRef.current = setTimeout(() => {
         if (!toastExpanded) {
           setToast(null);
@@ -671,23 +671,23 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         detail: errorMessage,
         timestamp: new Date(),
       };
-      
+
       onAddExecutionHistory?.(historyEntry);
-      
-      setToast({ 
-        type: 'error', 
+
+      setToast({
+        type: 'error',
         message: historyEntry.message,
         detail: errorMessage
       });
       setToastExpanded(false);
-      
+
       toastTimerRef.current = setTimeout(() => {
         if (!toastExpanded) {
           setToast(null);
         }
       }, 5000);
     }
-    
+
     setTimeout(() => {
       setAddingToFavorite(null);
     }, 500);
@@ -701,7 +701,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }
     setToastExpanded(true);
   }, []);
-  
+
   // 关闭 Toast
   const handleCloseToast = useCallback(() => {
     setToast(null);
@@ -727,11 +727,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       {/* Toast 通知 */}
       {toast && (
         <div className="fixed bottom-4 right-4 z-50 max-w-md">
-          <div className={`rounded-lg shadow-lg overflow-hidden ${
-            toast.type === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' 
+          <div className={`rounded-lg shadow-lg overflow-hidden ${toast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
               : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
-          }`}>
+            }`}>
             {/* 折叠状态 */}
             <div className="flex items-center gap-3 p-3">
               {toast.type === 'success' ? (
@@ -743,20 +742,18 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
-              <span className={`text-sm font-medium flex-1 ${
-                toast.type === 'success' 
-                  ? 'text-green-800 dark:text-green-200' 
+              <span className={`text-sm font-medium flex-1 ${toast.type === 'success'
+                  ? 'text-green-800 dark:text-green-200'
                   : 'text-red-800 dark:text-red-200'
-              }`}>
+                }`}>
                 {toast.message}
               </span>
               <div className="flex items-center gap-1">
                 {toast.detail && !toastExpanded && (
-                  <button 
+                  <button
                     onClick={handleExpandToast}
-                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
-                      toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}
+                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}
                     title="查看详情"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -765,11 +762,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                   </button>
                 )}
                 {toastExpanded && (
-                  <button 
+                  <button
                     onClick={() => setToastExpanded(false)}
-                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
-                      toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}
+                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}
                     title="收起"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -777,11 +773,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                     </svg>
                   </button>
                 )}
-                <button 
+                <button
                   onClick={handleCloseToast}
-                  className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${
-                    toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}
+                  className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}
                   title="关闭"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -790,19 +785,17 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                 </button>
               </div>
             </div>
-            
+
             {/* 展开的详情 */}
             {toastExpanded && toast.detail && (
-              <div className={`border-t px-3 pb-3 ${
-                toast.type === 'success'
+              <div className={`border-t px-3 pb-3 ${toast.type === 'success'
                   ? 'border-green-200 dark:border-green-800'
                   : 'border-red-200 dark:border-red-800'
-              }`}>
-                <pre className={`mt-2 text-xs overflow-auto max-h-48 p-2 rounded whitespace-pre-wrap break-all ${
-                  toast.type === 'success'
+                }`}>
+                <pre className={`mt-2 text-xs overflow-auto max-h-48 p-2 rounded whitespace-pre-wrap break-all ${toast.type === 'success'
                     ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
                     : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
-                }`}>
+                  }`}>
                   {toast.detail}
                 </pre>
               </div>
@@ -810,11 +803,11 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
           </div>
         </div>
       )}
-      
+
       <Masonry
         breakpointCols={breakpointColumns}
-        className="flex -ml-4 w-auto"
-        columnClassName="pl-4 bg-clip-padding"
+        className="flex -ml-3 w-auto"
+        columnClassName="pl-3 bg-clip-padding"
       >
         {items.map((item) => (
           <div
@@ -823,194 +816,192 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             onClick={() => onItemClick(item)}
             onMouseEnter={() => handleMouseEnter(item)}
             onMouseLeave={() => handleMouseLeave(item.id)}
-            className="mb-4 cursor-pointer group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow bg-white dark:bg-dark-card"
+            className="mb-3 cursor-pointer group relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow bg-white dark:bg-dark-card"
           >
-          {/* Image */}
-          <div className="relative bg-gray-200 dark:bg-neutral-700 overflow-hidden">
-            <ImageCard item={item} onRetry={handleImageRetry} />
-            
-            {/* Hover Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            
-            {/* Hover Toolbar */}
-            <div className="absolute bottom-0 right-0 left-0 flex justify-end gap-1 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-              {/* Preset Actions */}
-              {getItemPresetActions(item).map((preset) => (
-                <div key={preset.id} className="flex gap-1">
-                  {/* 推送下载按钮 */}
-                  <button
-                    onClick={(e) => handleExecutePresetAction(e, item, preset)}
-                    className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
-                    title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
-                  >
-                    {executingPreset === preset.id ? (
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : preset.icon === 'hentai-assistant' ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    )}
-                  </button>
-                  
-                  {/* 添加到收藏夹按钮（仅 Hentai Assistant 且配置了收藏夹且 URL 匹配 E-Hentai 域名） */}
-                  {preset.id === 'hentai-assistant' && preset.defaultFavcat && item.link && isHentaiAssistantFavoriteCompatible(item.link) && (
+            {/* Image */}
+            <div className="relative bg-gray-200 dark:bg-neutral-700 overflow-hidden">
+              <ImageCard item={item} onRetry={handleImageRetry} />
+
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+              {/* Hover Toolbar */}
+              <div className="absolute bottom-0 right-0 left-0 flex justify-end gap-1 px-2 py-1.5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Preset Actions */}
+                {getItemPresetActions(item).map((preset) => (
+                  <div key={preset.id} className="flex gap-1">
+                    {/* 推送下载按钮 */}
                     <button
-                      onClick={(e) => handleAddToFavorite(e, item, preset)}
+                      onClick={(e) => handleExecutePresetAction(e, item, preset)}
                       className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
-                      title="添加到 E-Hentai 收藏夹"
+                      title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
                     >
-                      {addingToFavorite === item.id ? (
+                      {executingPreset === preset.id ? (
                         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
+                      ) : preset.icon === 'hentai-assistant' ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
                       ) : (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       )}
                     </button>
-                  )}
-                </div>
-              ))}
-              
-              {/* Custom Integrations */}
-              {getItemIntegrations(item).map((integration) => (
+
+                    {/* 添加到收藏夹按钮（仅 Hentai Assistant 且配置了收藏夹且 URL 匹配 E-Hentai 域名） */}
+                    {preset.id === 'hentai-assistant' && preset.defaultFavcat && item.link && isHentaiAssistantFavoriteCompatible(item.link) && (
+                      <button
+                        onClick={(e) => handleAddToFavorite(e, item, preset)}
+                        className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                        title="添加到 E-Hentai 收藏夹"
+                      >
+                        {addingToFavorite === item.id ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {/* Custom Integrations */}
+                {getItemIntegrations(item).map((integration) => (
+                  <button
+                    key={integration.id}
+                    onClick={(e) => handleExecuteIntegration(e, item, integration)}
+                    className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    title={integration.name}
+                  >
+                    {executingIntegration === integration.id ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : integration.icon ? (
+                      <IntegrationIconComponent icon={integration.icon} className="w-4 h-4" />
+                    ) : integration.type === 'url' ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+
+                {/* Favorite Button */}
                 <button
-                  key={integration.id}
-                  onClick={(e) => handleExecuteIntegration(e, item, integration)}
-                  className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
-                  title={integration.name}
+                  onClick={(e) => handleToggleFavorite(e, item)}
+                  disabled={favoritingItemId === item.id}
+                  className={`p-1.5 hover:bg-white/20 text-white rounded-lg transition-all ${favoritingItemId === item.id ? 'scale-110' : ''
+                    }`}
+                  title={item.isFavorite ? "取消收藏" : "收藏"}
                 >
-                  {executingIntegration === integration.id ? (
+                  {favoritingItemId === item.id ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  ) : integration.icon ? (
-                    <IntegrationIconComponent icon={integration.icon} className="w-4 h-4" />
-                  ) : integration.type === 'url' ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  ) : item.isFavorite ? (
+                    <svg className="w-4 h-4 text-yellow-400 fill-yellow-400 transition-all duration-300 ease-out" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <svg className="w-4 h-4 transition-all duration-300 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                   )}
                 </button>
-              ))}
-              
-              {/* Favorite Button */}
-              <button
-                onClick={(e) => handleToggleFavorite(e, item)}
-                disabled={favoritingItemId === item.id}
-                className={`p-1.5 hover:bg-white/20 text-white rounded-lg transition-all ${
-                  favoritingItemId === item.id ? 'scale-110' : ''
-                }`}
-                title={item.isFavorite ? "取消收藏" : "收藏"}
-              >
-                {favoritingItemId === item.id ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : item.isFavorite ? (
-                  <svg className="w-4 h-4 text-yellow-400 fill-yellow-400 transition-all duration-300 ease-out" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 transition-all duration-300 ease-out" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                )}
-              </button>
-              
-              {/* Share Button */}
-              <button
-                onClick={(e) => handleShare(e, item)}
-                className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
-                title="复制链接"
-              >
-                {copiedItemId === item.id ? (
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
 
-          {/* Content */}
-          <div className="p-4">
-            <h3 className={`font-semibold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${
-              item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'
-            }`}>
-              {item.title}
-            </h3>
-            
-            {/* Meta Info */}
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-text-secondary">
-              {item.feed && (
-                <span className="flex items-center gap-1.5 min-w-0 flex-1">
-                  {item.feed.favicon ? (
-                    <img 
-                      src={item.feed.favicon} 
-                      alt="" 
-                      className="w-3.5 h-3.5 flex-shrink-0 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                {/* Share Button */}
+                <button
+                  onClick={(e) => handleShare(e, item)}
+                  className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  title="复制链接"
+                >
+                  {copiedItemId === item.id ? (
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
                   ) : (
-                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
                   )}
-                  <span className="truncate">{item.feed.title}</span>
-                </span>
-              )}
-              <span className="flex-shrink-0">•</span>
-              <span className="flex-shrink-0">{formatRelativeTime(item.publishedAt)}</span>
+                </button>
+              </div>
             </div>
 
-            {/* Description */}
-            {item.description && (
-              <p className="mt-2 text-sm text-gray-600 dark:text-dark-text-secondary line-clamp-2">
-                {stripHtml(item.description)}
-              </p>
-            )}
+            {/* Content */}
+            <div className="p-4">
+              <h3 className={`font-semibold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'
+                }`}>
+                {item.title}
+              </h3>
 
-            {/* Categories */}
-            {item.categories && (() => {
-              const cats = parseCategories(item.categories);
-              return cats.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {cats.slice(0, 10).map((category, index) => (
-                    <span
-                      key={index}
-                      className="inline-block px-2 py-0.5 text-xs bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-text-secondary rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              ) : null;
-            })()}
+              {/* Meta Info */}
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-text-secondary">
+                {item.feed && (
+                  <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {item.feed.favicon ? (
+                      <img
+                        src={item.feed.favicon}
+                        alt=""
+                        className="w-3.5 h-3.5 flex-shrink-0 object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                      </svg>
+                    )}
+                    <span className="truncate">{item.feed.title}</span>
+                  </span>
+                )}
+                <span className="flex-shrink-0">•</span>
+                <span className="flex-shrink-0">{formatRelativeTime(item.publishedAt)}</span>
+              </div>
+
+              {/* Description */}
+              {item.description && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-dark-text-secondary line-clamp-2">
+                  {stripHtml(item.description)}
+                </p>
+              )}
+
+              {/* Categories */}
+              {item.categories && (() => {
+                const cats = parseCategories(item.categories);
+                return cats.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {cats.slice(0, 10).map((category, index) => (
+                      <span
+                        key={index}
+                        className="inline-block px-2 py-0.5 text-xs bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-text-secondary rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
+                      >
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
       </Masonry>
     </div>
   );

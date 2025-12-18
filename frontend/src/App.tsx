@@ -741,7 +741,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
       {/* Top Header Bar */}
-      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
+      <header className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
@@ -1081,8 +1081,8 @@ function App() {
 
       {/* Horizontal Tab Bar - 独立的横向标签栏 */}
       {sidebarCollapsed && (
-        <div className="px-4 pt-3 sticky top-[61px] z-40 bg-gray-50 dark:bg-dark-bg">
-          <div className="bg-white dark:bg-dark-card rounded-lg shadow-xl border border-gray-200 dark:border-dark-border px-4 py-2">
+        <div className="px-4 pt-3 sticky top-[61px] z-40 relative">
+          <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md rounded-lg shadow-xl border border-gray-200 dark:border-dark-border px-4 py-2">
             <div
               ref={compactFeedListRef}
               className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide select-none"
@@ -1631,7 +1631,7 @@ function App() {
         onClearHistory={() => setExecutionHistory([])}
         onIntegrationsChange={() => setIntegrationsRefreshTrigger(prev => prev + 1)}
       />
-    </div>
+    </div >
   );
 }
 

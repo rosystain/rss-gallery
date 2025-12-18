@@ -173,6 +173,7 @@ function App() {
     return saved ? parseInt(saved) : 256;
   });
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [expandedWidth, setExpandedWidth] = useState(256); // 记录展开时的宽度
   const sidebarStartXRef = useRef(0);
   const sidebarStartWidthRef = useRef(0);
   const isCompactSidebar = sidebarWidth < 90;
@@ -229,8 +230,8 @@ function App() {
     handleFeedFilter(feedId);
   };
 
-  // 侧边栏拖动调整处理
-  const handleSidebarResizeStart = (e: React.MouseEvent) => {
+  // 侧边栏拖动调整处理（使用 Pointer Events 支持触摸设备）
+  const handleSidebarResizeStart = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsResizingSidebar(true);
     sidebarStartXRef.current = e.clientX;
@@ -239,17 +240,34 @@ function App() {
     document.body.style.userSelect = 'none';
   };
 
-  // useEffect 监听全局鼠标移动和释放
+  // 双击切换紧凑/展开模式
+  const handleSidebarToggle = () => {
+    if (sidebarWidth === 64) {
+      // 从紧凑模式切换到展开模式，至少使用200px
+      setSidebarWidth(Math.max(200, expandedWidth));
+    } else {
+      // 切换到紧凑模式，记住当前宽度
+      setExpandedWidth(sidebarWidth);
+      setSidebarWidth(64);
+    }
+  };
+
+  // useEffect 监听全局 pointer 移动和释放（支持鼠标和触摸）
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       if (!isResizingSidebar) return;
       const delta = e.clientX - sidebarStartXRef.current;
       const newWidth = sidebarStartWidthRef.current + delta;
       // 限制宽度在 64px 到 300px 之间
-      setSidebarWidth(Math.max(64, Math.min(300, newWidth)));
+      const clampedWidth = Math.max(64, Math.min(300, newWidth));
+      setSidebarWidth(clampedWidth);
+      // 如果不是紧凑模式，更新展开宽度（双击恢复时会保证至少200px）
+      if (clampedWidth > 64) {
+        setExpandedWidth(clampedWidth);
+      }
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       if (isResizingSidebar) {
         setIsResizingSidebar(false);
         document.body.style.cursor = '';
@@ -259,13 +277,15 @@ function App() {
     };
 
     if (isResizingSidebar) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
+      document.addEventListener('pointercancel', handlePointerUp); // 处理触摸取消
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerUp);
     };
   }, [isResizingSidebar, sidebarWidth]);
 
@@ -1135,11 +1155,16 @@ function App() {
           <aside
             className="fixed bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
             style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none' }}
+            onDoubleClick={handleSidebarToggle}
           >
             {/* 拖动分隔线 */}
             <div
-              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 transition-colors z-50"
-              onMouseDown={handleSidebarResizeStart}
+              className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors z-50 ${isResizingSidebar
+                ? 'bg-gray-400 dark:bg-gray-500'
+                : 'hover:bg-gray-300 dark:hover:bg-gray-600 active:bg-gray-400 dark:active:bg-gray-500'
+                }`}
+              style={{ touchAction: 'none' }}
+              onPointerDown={handleSidebarResizeStart}
               title="拖动调整侧边栏宽度"
             />
             {/* Feed List */}

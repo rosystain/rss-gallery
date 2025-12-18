@@ -5,6 +5,9 @@
 /* Theme transition */
 html {
   transition: background-color 0.3s ease, color 0.3s ease;
+  /* 禁用横向滚动，防止误触发浏览器手势 */
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 /* Custom dark mode colors - warmer tones */

@@ -243,13 +243,16 @@ function App() {
 
   // 双击切换紧凑/展开模式（iOS兼容）
   const handleSidebarToggle = () => {
-    if (sidebarWidth === 64) {
-      // 从紧凑模式切换到展开模式，至少使用200px
-      setSidebarWidth(Math.max(200, expandedWidth));
+    // 如果当前宽度小于90px（紧凑模式），则展开
+    if (sidebarWidth < 90) {
+      const newWidth = Math.max(200, expandedWidth);
+      setSidebarWidth(newWidth);
+      localStorage.setItem('sidebarWidth', newWidth.toString());
     } else {
-      // 切换到紧凑模式，记住当前宽度
+      // 否则切换到最紧凑模式（64px）
       setExpandedWidth(sidebarWidth);
       setSidebarWidth(64);
+      localStorage.setItem('sidebarWidth', '64');
     }
   };
 

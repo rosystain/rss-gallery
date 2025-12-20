@@ -176,6 +176,7 @@ function App() {
   const [expandedWidth, setExpandedWidth] = useState(256); // 记录展开时的宽度
   const sidebarStartXRef = useRef(0);
   const sidebarStartWidthRef = useRef(0);
+  const lastTapTimeRef = useRef(0); // 用于iOS双击检测
   const isCompactSidebar = sidebarWidth < 90;
 
 
@@ -240,7 +241,7 @@ function App() {
     document.body.style.userSelect = 'none';
   };
 
-  // 双击切换紧凑/展开模式
+  // 双击切换紧凑/展开模式（iOS兼容）
   const handleSidebarToggle = () => {
     if (sidebarWidth === 64) {
       // 从紧凑模式切换到展开模式，至少使用200px
@@ -249,6 +250,31 @@ function App() {
       // 切换到紧凑模式，记住当前宽度
       setExpandedWidth(sidebarWidth);
       setSidebarWidth(64);
+    }
+  };
+
+  // iOS兼容的双击检测
+  const handleSidebarClick = (e: React.MouseEvent | React.PointerEvent) => {
+    // 如果正在拖拽，不处理点击
+    if (isResizingSidebar) return;
+
+    // 检查是否点击了按钮或链接等交互元素
+    const target = e.target as HTMLElement;
+    const isInteractiveElement = target.closest('button, a, input, select, textarea');
+
+    // 如果点击的是交互元素，不触发双击
+    if (isInteractiveElement) return;
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTimeRef.current;
+
+    // 300ms内的两次点击视为双击
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+      e.preventDefault();
+      handleSidebarToggle();
+      lastTapTimeRef.current = 0; // 重置
+    } else {
+      lastTapTimeRef.current = now;
     }
   };
 
@@ -1154,8 +1180,8 @@ function App() {
         {!sidebarCollapsed && (
           <aside
             className="fixed bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
-            style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none' }}
-            onDoubleClick={handleSidebarToggle}
+            style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none', touchAction: 'manipulation' }}
+            onClick={handleSidebarClick}
           >
             {/* 拖动分隔线 */}
             <div

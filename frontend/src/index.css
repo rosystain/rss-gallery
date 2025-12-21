@@ -10,6 +10,16 @@ body {
   overscroll-behavior-x: none;
   /* 允许纵向过度滚动，支持下拉刷新和iOS橡皮筋效果 */
   touch-action: pan-y pinch-zoom;
+  /* 设置背景色，防止下拉时露出白色 */
+  background-color: rgb(249, 250, 251);
+  /* gray-50 */
+}
+
+/* 深色模式背景 */
+.dark html,
+.dark body {
+  background-color: #1a1a1a;
+  /* dark-bg */
 }
 
 

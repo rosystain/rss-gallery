@@ -179,6 +179,13 @@ function App() {
   const lastTapTimeRef = useRef(0); // 用于iOS双击检测
   const isCompactSidebar = sidebarWidth < 90;
 
+  // 下拉刷新状态
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullStartYRef = useRef(0);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!compactFeedListRef.current) return;
@@ -278,6 +285,63 @@ function App() {
       lastTapTimeRef.current = 0; // 重置
     } else {
       lastTapTimeRef.current = now;
+    }
+  };
+
+  // 下拉刷新处理
+  const handlePullStart = (e: React.TouchEvent) => {
+    const mainContent = mainContentRef.current;
+    if (!mainContent || isRefreshing) return;
+
+    // 只在页面顶部时允许下拉
+    if (mainContent.scrollTop === 0) {
+      pullStartYRef.current = e.touches[0].clientY;
+      setIsPulling(true);
+    }
+  };
+
+  const handlePullMove = (e: React.TouchEvent) => {
+    if (!isPulling || isRefreshing) return;
+
+    const currentY = e.touches[0].clientY;
+    const distance = currentY - pullStartYRef.current;
+
+    // 只允许向下拉
+    if (distance > 0) {
+      // 使用阻尼效果，距离越大阻力越大
+      const dampedDistance = Math.min(distance * 0.5, 80);
+      setPullDistance(dampedDistance);
+
+      // 阻止默认滚动
+      if (distance > 10) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handlePullEnd = async () => {
+    if (!isPulling) return;
+
+    setIsPulling(false);
+
+    // 如果下拉距离超过60px，触发刷新
+    if (pullDistance > 60 && !isRefreshing) {
+      setIsRefreshing(true);
+
+      try {
+        // 重置到第一页并刷新
+        setPage(1);
+        setRefreshKey(prev => prev + 1);
+
+        // 等待至少500ms让用户看到刷新动画
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } finally {
+        setIsRefreshing(false);
+        setPullDistance(0);
+      }
+    } else {
+      // 回弹
+      setPullDistance(0);
     }
   };
 
@@ -770,7 +834,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
       {/* Top Header Bar */}
-      <header className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
+      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
@@ -1579,7 +1643,36 @@ function App() {
           )}
 
           {/* Gallery Content */}
-          <main className="flex-1 overflow-y-auto pl-3 pr-3 pb-6 pt-3">
+          <main
+            ref={mainContentRef}
+            className="flex-1 overflow-y-auto pl-3 pr-3 pb-6 pt-3 relative"
+            onTouchStart={handlePullStart}
+            onTouchMove={handlePullMove}
+            onTouchEnd={handlePullEnd}
+          >
+            {/* 下拉刷新指示器 */}
+            {(isPulling || isRefreshing) && (
+              <div
+                className="absolute left-0 right-0 flex items-center justify-center text-gray-600 dark:text-gray-400 transition-all duration-200"
+                style={{
+                  top: `${Math.max(pullDistance - 40, 0)}px`,
+                  opacity: isRefreshing ? 1 : Math.min(pullDistance / 60, 1)
+                }}
+              >
+                {isRefreshing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span>刷新中...</span>
+                  </>
+                ) : (
+                  <span>{pullDistance > 60 ? '释放刷新' : '下拉刷新'}</span>
+                )}
+              </div>
+            )}
+
             {isLoading && page === 1 ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

@@ -3,12 +3,17 @@
 @tailwind utilities;
 
 /* Theme transition */
-html {
+html,
+body {
   transition: background-color 0.3s ease, color 0.3s ease;
   /* 禁用横向滚动，防止误触发浏览器手势 */
   overscroll-behavior-x: none;
+  /* 允许纵向过度滚动，支持下拉刷新和iOS橡皮筋效果 */
   touch-action: pan-y pinch-zoom;
 }
+
+
+
 
 /* Custom dark mode colors - warmer tones */
 .dark {

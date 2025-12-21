@@ -768,7 +768,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
       {/* Top Header Bar */}
       <header className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between gap-4">
@@ -1182,8 +1182,8 @@ function App() {
         {/* Left Sidebar - Fixed Position */}
         {!sidebarCollapsed && (
           <aside
-            className="fixed bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
-            style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none', touchAction: 'manipulation' }}
+            className="absolute bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
+            style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none' }}
             onClick={handleSidebarClick}
           >
             {/* 拖动分隔线 */}

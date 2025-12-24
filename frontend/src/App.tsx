@@ -1286,7 +1286,7 @@ function App() {
         {/* Left Sidebar - Fixed Position */}
         {!sidebarCollapsed && (
           <aside
-            className="absolute bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
+            className="fixed bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
             style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none' }}
             onClick={handleSidebarClick}
           >

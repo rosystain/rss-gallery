@@ -441,35 +441,35 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                     </div>
 
                     {/* Meta Info */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-dark-text-secondary mb-6 pb-4 border-b border-gray-200 dark:border-dark-border">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 text-sm text-gray-600 dark:text-dark-text-secondary mb-6 pb-4 border-b border-gray-200 dark:border-dark-border">
                       {/* Left side: Author, Date, Feed */}
-                      <div className="flex flex-wrap items-center gap-4 flex-1">
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 flex-1 min-w-0">
                         {item.author && (
-                          <div className="flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="flex items-center gap-1 shrink-0">
+                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                             </svg>
-                            <span>{item.author}</span>
+                            <span className="truncate max-w-[150px]">{item.author}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                           </svg>
                           <span>{new Date(item.publishedAt).toLocaleDateString('zh-CN')}</span>
                         </div>
                         {item.feed && (
-                          <div className="flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                             </svg>
-                            <span>{item.feed.title}</span>
+                            <span className="truncate">{item.feed.title}</span>
                           </div>
                         )}
                       </div>
 
                       {/* Right side: Share & Actions Toolbar */}
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
                         {/* Preset Actions */}
                         {presetActions.map((preset) => (
                           <div key={preset.id} className="flex gap-1">

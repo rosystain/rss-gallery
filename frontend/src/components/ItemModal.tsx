@@ -99,12 +99,20 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
 
     if (wasAtTop && isAtTop && deltaY > 0) {
       e.preventDefault();
+      // 禁用内容滚动
+      scrollContainer.style.overflow = 'hidden';
       setIsDragging(true);
       setDragOffset(deltaY);
     }
   };
 
   const handlePanelTouchEnd = () => {
+    const scrollContainer = contentRef.current;
+    if (scrollContainer) {
+      // 恢复内容滚动
+      scrollContainer.style.overflow = '';
+    }
+
     if (isDragging && dragOffset > 150) {
       onClose();
     }
@@ -389,8 +397,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                 className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[95vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col"
                 style={{
                   transform: `translateY(${dragOffset}px)`,
-                  opacity: isDragging ? Math.max(0.5, 1 - dragOffset / 300) : 1,
-                  transition: isDragging ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out'
+                  transition: isDragging ? 'none' : 'transform 0.3s ease-out'
                 }}
                 onTouchStart={handlePanelTouchStart}
                 onTouchMove={handlePanelTouchMove}
@@ -417,7 +424,13 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                 </button>
 
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto">
+                <div
+                  className="flex-1 overflow-y-auto"
+                  style={{
+                    transform: isDragging ? `translateY(-${dragOffset}px)` : 'none',
+                    transition: isDragging ? 'none' : 'transform 0.3s ease-out'
+                  }}
+                >
                   {/* Content with padding */}
                   <div className="px-6 pb-6">
                     {/* Title */}

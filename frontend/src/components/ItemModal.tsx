@@ -382,7 +382,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center">
+          <div className="flex min-h-full items-center justify-center p-4 min-[1151px]:py-8">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -394,7 +394,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
             >
               <Dialog.Panel
                 ref={panelRef}
-                className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[95vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col"
+                className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[90vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col"
                 style={{
                   transform: `translateY(${dragOffset}px)`,
                   transition: isDragging ? 'none' : 'transform 0.3s ease-out'

@@ -331,7 +331,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl h-screen md:h-[95vh] md:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col">
+              <Dialog.Panel className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[95vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col">
                 {/* Close Button */}
                 <button
                   onClick={onClose}

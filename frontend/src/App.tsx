@@ -76,7 +76,7 @@ function App() {
   useEffect(() => {
     if (sidebarMode !== 'auto') return;
     const handleResize = () => {
-      setSidebarCollapsed(window.innerWidth < 900);
+      setSidebarCollapsed(window.innerWidth <= 1024);
     };
     handleResize();
     window.addEventListener('resize', handleResize);

@@ -878,7 +878,12 @@ function App() {
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text">RSS 图片墙</h1>
+            <img 
+              src="/favicon.svg" 
+              alt="RSS Gallery" 
+              className="h-8 w-auto"
+              title="RSS Gallery"
+            />
           </div>
 
 

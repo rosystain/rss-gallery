@@ -69,6 +69,59 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     });
   }, [item, isOpen]);
 
+  // 向下滑动关闭功能
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartScrollTop = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handlePanelTouchStart = (e: React.TouchEvent) => {
+    const scrollContainer = contentRef.current;
+    if (!scrollContainer) return;
+
+    dragStartY.current = e.touches[0].clientY;
+    dragStartScrollTop.current = scrollContainer.scrollTop;
+    setIsDragging(false);
+    setDragOffset(0);
+  };
+
+  const handlePanelTouchMove = (e: React.TouchEvent) => {
+    const scrollContainer = contentRef.current;
+    if (!scrollContainer) return;
+
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - dragStartY.current;
+
+    // 只在滚动到顶部（允许5px误差）且向下拖拽时启用
+    const isAtTop = scrollContainer.scrollTop <= 5;
+    const wasAtTop = dragStartScrollTop.current <= 5;
+
+    if (wasAtTop && isAtTop && deltaY > 0) {
+      e.preventDefault();
+      setIsDragging(true);
+      setDragOffset(deltaY);
+    }
+  };
+
+  const handlePanelTouchEnd = () => {
+    if (isDragging && dragOffset > 150) {
+      onClose();
+    }
+    setDragOffset(0);
+    setIsDragging(false);
+  };
+
+  // Modal 关闭时重置所有状态
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset(0);
+      setIsDragging(false);
+      dragStartY.current = 0;
+      dragStartScrollTop.current = 0;
+    }
+  }, [isOpen]);
+
   // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
@@ -331,7 +384,18 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[95vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col">
+              <Dialog.Panel
+                ref={panelRef}
+                className="w-full min-[1151px]:w-[1152px] min-[1151px]:max-w-full h-screen min-[1151px]:h-[95vh] min-[1151px]:rounded-2xl transform overflow-hidden bg-white dark:bg-dark-card shadow-xl transition-all flex flex-col"
+                style={{
+                  transform: `translateY(${dragOffset}px)`,
+                  opacity: isDragging ? Math.max(0.5, 1 - dragOffset / 300) : 1,
+                  transition: isDragging ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out'
+                }}
+                onTouchStart={handlePanelTouchStart}
+                onTouchMove={handlePanelTouchMove}
+                onTouchEnd={handlePanelTouchEnd}
+              >
                 {/* Close Button */}
                 <button
                   onClick={onClose}

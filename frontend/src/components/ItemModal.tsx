@@ -463,7 +463,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                             <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                             </svg>
-                            <span className="truncate">{item.feed.title}</span>
+                            <span className="truncate max-w-[200px] sm:max-w-[300px]">{item.feed.title}</span>
                           </div>
                         )}
                       </div>

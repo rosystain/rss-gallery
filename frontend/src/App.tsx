@@ -176,7 +176,7 @@ function App() {
   });
   const [autoLoadMore, setAutoLoadMore] = useState(() => {
     const saved = localStorage.getItem('autoLoadMore');
-    return saved === 'true';
+    return saved !== null ? saved === 'true' : true;
   });
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const saved = localStorage.getItem('itemsPerPage');
@@ -184,7 +184,7 @@ function App() {
   });
   const [sortBy, setSortBy] = useState<'published' | 'created'>(() => {
     const saved = localStorage.getItem('sortBy');
-    return (saved as 'published' | 'created') || 'published';
+    return (saved as 'published' | 'created') || 'created';
   });
   const [showIntegrationSettings, setShowIntegrationSettings] = useState(false);
   const [executionHistory, setExecutionHistory] = useState<Array<{
@@ -878,9 +878,9 @@ function App() {
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
-            <img 
-              src="/favicon.svg" 
-              alt="RSS Gallery" 
+            <img
+              src="/favicon.svg"
+              alt="RSS Gallery"
               className="h-8 w-auto"
               title="RSS Gallery"
             />
@@ -965,15 +965,6 @@ function App() {
                     <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">排序方式</div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSortBy('published')}
-                        className={`flex-1 px-3 py-1.5 text-xs rounded transition ${sortBy === 'published'
-                          ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
-                          : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
-                          }`}
-                      >
-                        发布时间
-                      </button>
-                      <button
                         onClick={() => setSortBy('created')}
                         className={`flex-1 px-3 py-1.5 text-xs rounded transition ${sortBy === 'created'
                           ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
@@ -981,6 +972,15 @@ function App() {
                           }`}
                       >
                         抓取时间
+                      </button>
+                      <button
+                        onClick={() => setSortBy('published')}
+                        className={`flex-1 px-3 py-1.5 text-xs rounded transition ${sortBy === 'published'
+                          ? 'bg-gray-300 dark:bg-dark-border text-gray-800 dark:text-dark-text'
+                          : 'bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-dark-text hover:bg-gray-200 dark:hover:bg-dark-border'
+                          }`}
+                      >
+                        发布时间
                       </button>
                     </div>
                   </div>

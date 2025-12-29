@@ -728,8 +728,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       {toast && (
         <div className="fixed bottom-4 right-4 z-50 max-w-md">
           <div className={`rounded-lg shadow-lg overflow-hidden ${toast.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+            ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
             }`}>
             {/* 折叠状态 */}
             <div className="flex items-center gap-3 p-3">
@@ -743,8 +743,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                 </svg>
               )}
               <span className={`text-sm font-medium flex-1 ${toast.type === 'success'
-                  ? 'text-green-800 dark:text-green-200'
-                  : 'text-red-800 dark:text-red-200'
+                ? 'text-green-800 dark:text-green-200'
+                : 'text-red-800 dark:text-red-200'
                 }`}>
                 {toast.message}
               </span>
@@ -789,12 +789,12 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             {/* 展开的详情 */}
             {toastExpanded && toast.detail && (
               <div className={`border-t px-3 pb-3 ${toast.type === 'success'
-                  ? 'border-green-200 dark:border-green-800'
-                  : 'border-red-200 dark:border-red-800'
+                ? 'border-green-200 dark:border-green-800'
+                : 'border-red-200 dark:border-red-800'
                 }`}>
                 <pre className={`mt-2 text-xs overflow-auto max-h-48 p-2 rounded whitespace-pre-wrap break-all ${toast.type === 'success'
-                    ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                    : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                  : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                   }`}>
                   {toast.detail}
                 </pre>
@@ -941,6 +941,20 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                     </svg>
                   )}
                 </button>
+
+                {/* View Original Button */}
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  title="查看原文"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
               </div>
             </div>
 
@@ -973,7 +987,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                   </span>
                 )}
                 <span className="flex-shrink-0">•</span>
-                <span className="flex-shrink-0">{formatRelativeTime(item.publishedAt)}</span>
+                <span className="flex-shrink-0">{formatRelativeTime(item.createdAt)}</span>
               </div>
 
               {/* Description */}

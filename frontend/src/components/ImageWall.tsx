@@ -10,19 +10,6 @@ const HOVER_READ_DELAY = 1500;
 // 复制成功提示的显示时间（毫秒）
 const COPY_TOAST_DURATION = 2000;
 
-// 解码 HTML 实体
-function decodeHtmlEntities(text: string): string {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
-}
-
-// 清理 HTML 内容：移除标签并解码实体
-function stripHtml(html: string): string {
-  const withoutTags = html.replace(/<[^>]*>/g, '');
-  return decodeHtmlEntities(withoutTags);
-}
-
 // 解析分类字段（可能是JSON数组或逗号分隔的字符串）
 function parseCategories(categories: string): string[] {
   if (!categories) return [];
@@ -40,6 +27,7 @@ function parseCategories(categories: string): string[] {
   // 按逗号分隔处理
   return categories.split(',').map(c => c.trim()).filter(Boolean);
 }
+
 
 // 格式化相对时间
 function formatRelativeTime(dateString: string): string {
@@ -990,19 +978,12 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                 <span className="flex-shrink-0">{formatRelativeTime(item.createdAt)}</span>
               </div>
 
-              {/* Description */}
-              {item.description && (
-                <p className="mt-2 text-sm text-gray-600 dark:text-dark-text-secondary line-clamp-2">
-                  {stripHtml(item.description)}
-                </p>
-              )}
-
-              {/* Categories */}
+              {/* Categories - 限制显示5个 */}
               {item.categories && (() => {
                 const cats = parseCategories(item.categories);
                 return cats.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {cats.slice(0, 10).map((category, index) => (
+                    {cats.slice(0, 5).map((category, index) => (
                       <span
                         key={index}
                         className="inline-block px-2 py-0.5 text-xs bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-text-secondary rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"

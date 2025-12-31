@@ -38,7 +38,24 @@ MAX_ITEMS_PER_FEED = int(os.getenv("MAX_ITEMS_PER_FEED", "1000"))
 # Initialize database
 @app.on_event("startup")
 def startup_event():
-    init_db()
+    # Run Alembic migrations
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+        
+        # Get the backend directory path
+        backend_dir = os.path.dirname(os.path.dirname(__file__))
+        alembic_cfg = Config(os.path.join(backend_dir, "alembic.ini"))
+        
+        print("Running database migrations...")
+        command.upgrade(alembic_cfg, "head")
+        print("Database migrations completed successfully")
+    except Exception as e:
+        print(f"Warning: Database migration failed: {e}")
+        print("Falling back to basic table creation...")
+        init_db()
+    
     # Fetch feeds on startup
     scheduler = BackgroundScheduler()
     scheduler.add_job(fetch_all_feeds, 'interval', minutes=int(os.getenv("FETCH_INTERVAL_MINUTES", "30")))
@@ -160,8 +177,12 @@ def fetch_all_feeds():
                 
                 new_items = 0
                 for entry_data in result['entries']:
-                    # Check if item already exists
-                    existing = db.query(FeedItem).filter(FeedItem.link == entry_data['link']).first()
+                    # Check if item already exists (优先使用 guid,后备使用 link)
+                    existing = None
+                    if entry_data.get('guid'):
+                        existing = db.query(FeedItem).filter(FeedItem.guid == entry_data['guid']).first()
+                    if not existing and entry_data.get('link'):
+                        existing = db.query(FeedItem).filter(FeedItem.link == entry_data['link']).first()
                     if existing:
                         continue
                     
@@ -175,6 +196,7 @@ def fetch_all_feeds():
                         id=str(uuid.uuid4()),
                         feed_id=feed.id,
                         title=entry_data['title'],
+                        guid=entry_data.get('guid'),
                         link=entry_data['link'],
                         description=entry_data.get('description'),
                         content=entry_data.get('content'),
@@ -340,6 +362,7 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
                 id=str(uuid.uuid4()),
                 feed_id=feed.id,
                 title=entry_data['title'],
+                guid=entry_data.get('guid'),
                 link=entry_data['link'],
                 description=entry_data.get('description'),
                 content=entry_data.get('content'),
@@ -703,7 +726,12 @@ def fetch_feed(feed_id: str, db: Session = Depends(get_db)):
         new_items = 0
         
         for entry_data in result['entries']:
-            existing = db.query(FeedItem).filter(FeedItem.link == entry_data['link']).first()
+            # Check if item already exists (优先使用 guid,后备使用 link)
+            existing = None
+            if entry_data.get('guid'):
+                existing = db.query(FeedItem).filter(FeedItem.guid == entry_data['guid']).first()
+            if not existing and entry_data.get('link'):
+                existing = db.query(FeedItem).filter(FeedItem.link == entry_data['link']).first()
             if existing:
                 continue
             
@@ -715,6 +743,7 @@ def fetch_feed(feed_id: str, db: Session = Depends(get_db)):
                 id=str(uuid.uuid4()),
                 feed_id=feed.id,
                 title=entry_data['title'],
+                guid=entry_data.get('guid'),
                 link=entry_data['link'],
                 description=entry_data.get('description'),
                 content=entry_data.get('content'),

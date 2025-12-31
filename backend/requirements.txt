@@ -1,6 +1,7 @@
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 sqlalchemy>=2.0.35
+alembic>=1.13.0
 feedparser==6.0.11
 requests==2.31.0
 pillow>=10.3.0

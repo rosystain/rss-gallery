@@ -303,8 +303,19 @@ def parse_rss_feed(feed_url: str) -> Dict[str, Any]:
         if hasattr(entry, 'tags'):
             categories = [tag.term for tag in entry.tags]
         
+        # Extract GUID (优先使用 RSS 标准的 id/guid)
+        guid = None
+        if hasattr(entry, 'id') and entry.id:
+            guid = entry.id
+        elif hasattr(entry, 'guid') and entry.guid:
+            guid = entry.guid
+        # 如果没有 guid,使用 link 作为后备
+        if not guid:
+            guid = entry.get('link', '')
+        
         entries.append({
             'title': entry.get('title', 'Untitled'),
+            'guid': guid,
             'link': entry.get('link', ''),
             'description': entry.get('summary', ''),
             'content': content,

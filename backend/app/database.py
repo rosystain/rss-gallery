@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, text, inspect
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -38,7 +38,8 @@ class FeedItem(Base):
     id = Column(String, primary_key=True, index=True)
     feed_id = Column(String, ForeignKey("feeds.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
-    link = Column(String, unique=True, nullable=False)
+    guid = Column(String, unique=True, nullable=True)  # RSS GUID, 优先用于去重
+    link = Column(String, nullable=False)  # 移除 unique 约束,因为 link 可能会变化
     description = Column(Text)
     content = Column(Text)
     cover_image = Column(String)
@@ -105,70 +106,11 @@ def get_db():
         db.close()
 
 
-def migrate_db():
-    """自动迁移数据库，添加缺失的列"""
-    inspector = inspect(engine)
-    
-    with engine.connect() as conn:
-        # 检查 feeds 表
-        if 'feeds' in inspector.get_table_names():
-            columns = [col['name'] for col in inspector.get_columns('feeds')]
-            
-            # 添加 enabled_integrations 列
-            if 'enabled_integrations' not in columns:
-                print("Migrating: Adding enabled_integrations column to feeds table...")
-                conn.execute(text("ALTER TABLE feeds ADD COLUMN enabled_integrations TEXT"))
-                conn.commit()
-                print("Migration complete: enabled_integrations column added")
-        
-        # 检查 feed_items 表
-        if 'feed_items' in inspector.get_table_names():
-            columns = [col['name'] for col in inspector.get_columns('feed_items')]
-            
-            # 添加 is_favorite 列
-            if 'is_favorite' not in columns:
-                print("Migrating: Adding is_favorite column to feed_items table...")
-                conn.execute(text("ALTER TABLE feed_items ADD COLUMN is_favorite BOOLEAN DEFAULT 0"))
-                conn.commit()
-                print("Migration complete: is_favorite column added")
-            
-            # 添加 favorited_at 列
-            if 'favorited_at' not in columns:
-                print("Migrating: Adding favorited_at column to feed_items table...")
-                conn.execute(text("ALTER TABLE feed_items ADD COLUMN favorited_at DATETIME"))
-                conn.commit()
-                print("Migration complete: favorited_at column added")
-        
-        # 检查 integrations 表是否存在，不存在则创建
-        if 'integrations' not in inspector.get_table_names():
-            print("Migrating: Creating integrations table...")
-            Base.metadata.tables['integrations'].create(bind=engine)
-            print("Migration complete: integrations table created")
-        
-        # 检查 preset_integrations 表是否存在，不存在则创建
-        if 'preset_integrations' not in inspector.get_table_names():
-            print("Migrating: Creating preset_integrations table...")
-            Base.metadata.tables['preset_integrations'].create(bind=engine)
-            print("Migration complete: preset_integrations table created")
-        else:
-            # 检查 preset_integrations 表的列
-            preset_columns = [col['name'] for col in inspector.get_columns('preset_integrations')]
-            
-            # 添加 default_favcat 列
-            if 'default_favcat' not in preset_columns:
-                print("Migrating: Adding default_favcat column to preset_integrations table...")
-                conn.execute(text("ALTER TABLE preset_integrations ADD COLUMN default_favcat TEXT"))
-                conn.commit()
-                print("Migration complete: default_favcat column added")
-            
-            # 添加 default_note 列
-            if 'default_note' not in preset_columns:
-                print("Migrating: Adding default_note column to preset_integrations table...")
-                conn.execute(text("ALTER TABLE preset_integrations ADD COLUMN default_note TEXT"))
-                conn.commit()
-                print("Migration complete: default_note column added")
-
-
 def init_db():
+    """Initialize database tables.
+    
+    Note: Database migrations are now managed by Alembic.
+    This function only creates tables if they don't exist.
+    For schema changes, use: alembic revision --autogenerate -m "description"
+    """
     Base.metadata.create_all(bind=engine)
-    migrate_db()

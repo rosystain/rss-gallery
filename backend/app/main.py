@@ -38,7 +38,14 @@ MAX_ITEMS_PER_FEED = int(os.getenv("MAX_ITEMS_PER_FEED", "1000"))
 # Initialize database
 @app.on_event("startup")
 def startup_event():
-    # Run Alembic migrations
+    # First, ensure basic tables exist (safe fallback)
+    try:
+        init_db()
+        print("Database tables initialized")
+    except Exception as e:
+        print(f"Warning: Basic table creation had issues: {e}")
+    
+    # Then run Alembic migrations for schema updates
     try:
         from alembic.config import Config
         from alembic import command
@@ -52,9 +59,8 @@ def startup_event():
         command.upgrade(alembic_cfg, "head")
         print("Database migrations completed successfully")
     except Exception as e:
-        print(f"Warning: Database migration failed: {e}")
-        print("Falling back to basic table creation...")
-        init_db()
+        print(f"Note: Database migration skipped or failed: {e}")
+        print("Using current database schema")
     
     # Fetch feeds on startup
     scheduler = BackgroundScheduler()

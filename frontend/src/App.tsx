@@ -112,46 +112,6 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
-  // 监听页面可见性变化，从后台恢复时刷新内容
-  useEffect(() => {
-    let lastRefreshTime = 0;
-    const REFRESH_THROTTLE = 2000; // 2秒内不重复刷新
-
-    const triggerRefresh = (source: string) => {
-      const now = Date.now();
-      // 防止短时间内重复刷新
-      if (now - lastRefreshTime < REFRESH_THROTTLE) {
-        console.log(`Refresh throttled (${source}), last refresh was ${now - lastRefreshTime}ms ago`);
-        return;
-      }
-
-      console.log(`Page became active (${source}), refreshing content...`);
-      lastRefreshTime = now;
-      setPage(1);
-      setRefreshKey(prev => prev + 1);
-    };
-
-    // 方案1: visibilitychange - 适用于移动端和部分桌面场景
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        triggerRefresh('visibilitychange');
-      }
-    };
-
-    // 方案2: focus - 适用于桌面浏览器标签页切换
-    const handleFocus = () => {
-      triggerRefresh('focus');
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
   const [imageWidth, setImageWidth] = useState(() => {
     const saved = localStorage.getItem('imageWidth');
     return saved ? parseInt(saved) : 5; // Default to medium (5 columns)

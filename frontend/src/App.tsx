@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
-import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus, Loader } from 'lucide-react';
+import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
 import { api } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
@@ -342,13 +342,14 @@ function App() {
       // 立即回弹
       setPullDistance(0);
 
-      try {
-        // 调用软刷新（只更新数据，不重载页面）
-        setPage(1);
-        triggerRefresh();
-      } finally {
+      // 调用软刷新（只更新数据，不重载页面）
+      setPage(1);
+      triggerRefresh(false); // 明确传入 false，避免重复设置动画
+      
+      // 短暂延迟后停止旋转，保持流畅
+      setTimeout(() => {
         setIsRefreshing(false);
-      }
+      }, 400); // 400ms - 足够完成大半圈旋转，视觉上更流畅
     } else {
       // 回弹
       setPullDistance(0);
@@ -638,8 +639,16 @@ function App() {
     }
   };
 
-  const triggerRefresh = () => {
+  const triggerRefresh = (isManualClick = false) => {
     setRefreshKey(prev => prev + 1);
+    
+    // 如果是手动点击，设置刷新状态并保持一段时间
+    if (isManualClick && !isRefreshing) {
+      setIsRefreshing(true);
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 600); // 手动点击时稍长一点，让用户看到反馈
+    }
   };
 
   const handleItemClick = (item: FeedItem) => {
@@ -844,25 +853,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
-      {/* 下拉刷新指示器 - 仅在下拉过程显示 */}
-      {isPulling && (
-        <div
-          className="fixed left-0 right-0 flex items-center justify-center z-[100]"
-          style={{
-            top: `${Math.max(pullDistance - 50, 0)}px`,
-            opacity: Math.min(pullDistance / 70, 1),
-            transition: 'opacity 0.2s'
-          }}
-        >
-          {pullDistance > 70 ? (
-            // iOS 风格加载器
-            <Loader className="animate-spin h-7 w-7 text-gray-500 dark:text-gray-400" />
-          ) : (
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">下拉刷新</span>
-          )}
-        </div>
-      )}
-
       {/* Top Header Bar - Fixed */}
       <header className="fixed top-0 left-0 right-0 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 z-50">
         <div className="flex items-center justify-between gap-4">
@@ -1014,12 +1004,17 @@ function App() {
             )}
 
             <button
-              onClick={() => triggerRefresh()}
+              onClick={() => triggerRefresh(true)}
               className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
               title="刷新"
-              disabled={isLoading && page === 1}
+              disabled={isRefreshing || (isPulling && pullDistance > 0)}
             >
-              <svg className={`w-5 h-5 ${isLoading && page === 1 ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg 
+                className={`w-5 h-5 transition-transform duration-200 ${isPulling && pullDistance > 0 || isRefreshing ? 'animate-spin' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>

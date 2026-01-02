@@ -35,6 +35,11 @@ class FeedBriefResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+        
+        # 确保 datetime 序列化为 ISO 8601 格式并带 Z 后缀（UTC）
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v.tzinfo is None else v.isoformat()
+        }
 
 
 class FeedItemResponse(BaseModel):
@@ -65,6 +70,11 @@ class FeedItemResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+        
+        # 确保 datetime 序列化为 ISO 8601 格式并带 Z 后缀（UTC）
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v.tzinfo is None else v.isoformat()
+        }
 
 
 class FeedResponse(BaseModel):
@@ -94,6 +104,11 @@ class FeedResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+        
+        # 确保 datetime 序列化为 ISO 8601 格式并带 Z 后缀（UTC）
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v.tzinfo is None else v.isoformat()
+        }
 
 
 class ItemsListResponse(BaseModel):
@@ -161,6 +176,11 @@ class IntegrationResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+        
+        # 确保 datetime 序列化为 ISO 8601 格式并带 Z 后缀（UTC）
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v.tzinfo is None else v.isoformat()
+        }
 
 
 # ========== 预设集成相关 Schema ==========
@@ -191,3 +211,8 @@ class PresetIntegrationResponse(BaseModel):
             word.capitalize() if i > 0 else word 
             for i, word in enumerate(string.split('_'))
         )
+        
+        # 确保 datetime 序列化为 ISO 8601 格式并带 Z 后缀（UTC）
+        json_encoders = {
+            datetime: lambda v: v.isoformat() + 'Z' if v.tzinfo is None else v.isoformat()
+        }

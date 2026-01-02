@@ -185,7 +185,6 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pullStartYRef = useRef(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const pageContainerRef = useRef<HTMLDivElement>(null);
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -844,7 +843,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
       {/* 下拉刷新指示器 - 仅在下拉过程显示 */}
       {isPulling && (
         <div
@@ -864,20 +863,8 @@ function App() {
         </div>
       )}
 
-      {/* 整个页面内容容器 - 应用下拉动画 */}
-      <div
-        ref={pageContainerRef}
-        className="flex flex-col flex-1 min-h-screen"
-        onTouchStart={handlePullStart}
-        onTouchMove={handlePullMove}
-        onTouchEnd={handlePullEnd}
-        style={{
-          transform: isPulling ? `translateY(${pullDistance}px)` : 'translateY(0)',
-          transition: isPulling ? 'none' : 'transform 0.3s ease-out'
-        }}
-      >
-      {/* Top Header Bar */}
-      <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
+      {/* Top Header Bar - Fixed */}
+      <header className="fixed top-0 left-0 right-0 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 z-50">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo and Toggle */}
           <div className="flex items-center gap-4 flex-shrink-0">
@@ -1223,7 +1210,7 @@ function App() {
 
       {/* Horizontal Tab Bar - 独立的横向标签栏 */}
       {sidebarCollapsed && (
-        <div className="px-4 pt-3 sticky top-[61px] z-40 relative">
+        <div className="fixed top-[61px] left-0 right-0 px-4 pt-3 z-40">
           <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-md rounded-lg shadow-xl border border-gray-200 dark:border-dark-border px-4 py-2">
             <div
               ref={compactFeedListRef}
@@ -1291,19 +1278,17 @@ function App() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" style={{ marginTop: sidebarCollapsed ? '128px' : '61px' }}>
         {/* Left Sidebar - Fixed Position */}
         {!sidebarCollapsed && (
           <aside
-            className="bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
+            className="bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border fixed"
             style={{ 
               width: `${sidebarWidth}px`, 
               left: '12px', 
               top: '73px', 
               bottom: '12px', 
-              userSelect: 'none',
-              // PWA 模式下使用 absolute，普通浏览器使用 fixed
-              position: window.matchMedia('(display-mode: standalone)').matches ? 'absolute' : 'fixed'
+              userSelect: 'none'
             }}
             onClick={handleSidebarClick}
           >
@@ -1703,6 +1688,13 @@ function App() {
           <main
             ref={mainContentRef}
             className="flex-1 overflow-y-auto pl-3 pr-3 pb-6 pt-3 relative"
+            onTouchStart={handlePullStart}
+            onTouchMove={handlePullMove}
+            onTouchEnd={handlePullEnd}
+            style={{
+              transform: isPulling ? `translateY(${pullDistance}px)` : 'translateY(0)',
+              transition: isPulling ? 'none' : 'transform 0.3s ease-out'
+            }}
           >
             {items.length === 0 ? (
               <div className="text-center py-16">
@@ -1780,7 +1772,6 @@ function App() {
         onClearHistory={() => setExecutionHistory([])}
         onIntegrationsChange={() => setIntegrationsRefreshTrigger(prev => prev + 1)}
       />
-      </div> {/* 关闭整个页面内容容器 */}
     </div >
   );
 }

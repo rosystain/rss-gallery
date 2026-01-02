@@ -8,7 +8,8 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
   /* 禁用横向滚动，防止误触发浏览器手势 */
   overscroll-behavior-x: none;
-  /* 允许纵向过度滚动，支持下拉刷新和iOS橡皮筋效果 */
+  /* 禁用原生下拉刷新，使用自定义实现 */
+  overscroll-behavior-y: contain;
   touch-action: pan-y pinch-zoom;
   /* 设置背景色，防止下拉时露出白色 */
   background-color: rgb(249, 250, 251);

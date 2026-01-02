@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
-import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
+import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus, Loader } from 'lucide-react';
 import { api } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
@@ -219,12 +219,45 @@ function App() {
   const lastTapTimeRef = useRef(0); // 用于iOS双击检测
   const isCompactSidebar = sidebarWidth < 90;
 
-  // 下拉刷新状态
+  // 自定义下拉刷新状态
   const [isPulling, setIsPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pullStartYRef = useRef(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
+
+  // 禁用 Safari 原生下拉刷新
+  useEffect(() => {
+    const container = pageContainerRef.current;
+    const mainContent = mainContentRef.current;
+    if (!container || !mainContent) return;
+
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touchY = e.touches[0].clientY;
+      const touchDelta = touchY - touchStartY;
+      
+      // 只在页面顶部且向下拉时阻止默认行为
+      if (mainContent.scrollTop === 0 && touchDelta > 0) {
+        e.preventDefault();
+      }
+    };
+
+    // passive: false 允许调用 preventDefault
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -328,13 +361,15 @@ function App() {
     }
   };
 
-  // 下拉刷新处理
+  // 自定义下拉刷新处理
   const handlePullStart = (e: React.TouchEvent) => {
+    if (isRefreshing) return;
+    
     const mainContent = mainContentRef.current;
-    if (!mainContent || isRefreshing) return;
+    if (!mainContent) return;
 
-    // 只在页面顶部时允许下拉
-    if (mainContent.scrollTop === 0) {
+    // 只在页面顶部时允许下拉（检查 mainContent 的滚动位置）
+    if (mainContent.scrollTop <= 0) {
       pullStartYRef.current = e.touches[0].clientY;
       setIsPulling(true);
     }
@@ -348,14 +383,9 @@ function App() {
 
     // 只允许向下拉
     if (distance > 0) {
-      // 使用阻尼效果，距离越大阻力越大
-      const dampedDistance = Math.min(distance * 0.5, 80);
+      // 阻尼效果：距离越大阻力越大，最大可拉到 150px
+      const dampedDistance = Math.min(distance * 0.5, 150);
       setPullDistance(dampedDistance);
-
-      // 阻止默认滚动
-      if (distance > 10) {
-        e.preventDefault();
-      }
     }
   };
 
@@ -364,26 +394,26 @@ function App() {
 
     setIsPulling(false);
 
-    // 如果下拉距离超过60px，触发刷新
-    if (pullDistance > 60 && !isRefreshing) {
+    // 如果下拉距离超过70px，触发刷新
+    if (pullDistance > 70 && !isRefreshing) {
       setIsRefreshing(true);
+      
+      // 立即回弹
+      setPullDistance(0);
 
       try {
-        // 重置到第一页并刷新
+        // 调用软刷新（只更新数据，不重载页面）
         setPage(1);
-        setRefreshKey(prev => prev + 1);
-
-        // 等待至少500ms让用户看到刷新动画
-        await new Promise(resolve => setTimeout(resolve, 500));
+        triggerRefresh();
       } finally {
         setIsRefreshing(false);
-        setPullDistance(0);
       }
     } else {
       // 回弹
       setPullDistance(0);
     }
   };
+
 
   // useEffect 监听全局 pointer 移动和释放（支持鼠标和触摸）
   useEffect(() => {
@@ -872,7 +902,38 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative overflow-hidden">
+      {/* 下拉刷新指示器 - 仅在下拉过程显示 */}
+      {isPulling && (
+        <div
+          className="fixed left-0 right-0 flex items-center justify-center z-[100]"
+          style={{
+            top: `${Math.max(pullDistance - 50, 0)}px`,
+            opacity: Math.min(pullDistance / 70, 1),
+            transition: 'opacity 0.2s'
+          }}
+        >
+          {pullDistance > 70 ? (
+            // iOS 风格加载器
+            <Loader className="animate-spin h-7 w-7 text-gray-500 dark:text-gray-400" />
+          ) : (
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">下拉刷新</span>
+          )}
+        </div>
+      )}
+
+      {/* 整个页面内容容器 - 应用下拉动画 */}
+      <div
+        ref={pageContainerRef}
+        className="flex flex-col flex-1 min-h-screen"
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+        style={{
+          transform: isPulling ? `translateY(${pullDistance}px)` : 'translateY(0)',
+          transition: isPulling ? 'none' : 'transform 0.3s ease-out'
+        }}
+      >
       {/* Top Header Bar */}
       <header className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center justify-between gap-4">
@@ -1027,8 +1088,9 @@ function App() {
               onClick={() => triggerRefresh()}
               className="p-2 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
               title="刷新"
+              disabled={isLoading && page === 1}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-5 h-5 ${isLoading && page === 1 ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
@@ -1291,8 +1353,16 @@ function App() {
         {/* Left Sidebar - Fixed Position */}
         {!sidebarCollapsed && (
           <aside
-            className="fixed bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
-            style={{ width: `${sidebarWidth}px`, left: '12px', top: '73px', bottom: '12px', userSelect: 'none' }}
+            className="bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border"
+            style={{ 
+              width: `${sidebarWidth}px`, 
+              left: '12px', 
+              top: '73px', 
+              bottom: '12px', 
+              userSelect: 'none',
+              // PWA 模式下使用 absolute，普通浏览器使用 fixed
+              position: window.matchMedia('(display-mode: standalone)').matches ? 'absolute' : 'fixed'
+            }}
             onClick={handleSidebarClick}
           >
             {/* 拖动分隔线 */}
@@ -1691,38 +1761,8 @@ function App() {
           <main
             ref={mainContentRef}
             className="flex-1 overflow-y-auto pl-3 pr-3 pb-6 pt-3 relative"
-            onTouchStart={handlePullStart}
-            onTouchMove={handlePullMove}
-            onTouchEnd={handlePullEnd}
           >
-            {/* 下拉刷新指示器 */}
-            {(isPulling || isRefreshing) && (
-              <div
-                className="fixed left-0 right-0 flex items-center justify-center text-gray-600 dark:text-gray-400 transition-all duration-200 z-40"
-                style={{
-                  top: `${Math.max(pullDistance - 40, -40)}px`,
-                  opacity: isRefreshing ? 1 : Math.min(pullDistance / 60, 1)
-                }}
-              >
-                {isRefreshing ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>刷新中...</span>
-                  </>
-                ) : (
-                  <span>{pullDistance > 60 ? '释放刷新' : '下拉刷新'}</span>
-                )}
-              </div>
-            )}
-
-            {isLoading && page === 1 ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-            ) : items.length === 0 ? (
+            {items.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -1798,6 +1838,7 @@ function App() {
         onClearHistory={() => setExecutionHistory([])}
         onIntegrationsChange={() => setIntegrationsRefreshTrigger(prev => prev + 1)}
       />
+      </div> {/* 关闭整个页面内容容器 */}
     </div >
   );
 }

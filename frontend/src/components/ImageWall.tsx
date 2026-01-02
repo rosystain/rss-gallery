@@ -933,11 +933,11 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
               {/* Komga 收录标记 */}
               {item.komgaStatus === 1 && (
                 <div
-                  className="absolute top-2 right-2 p-1.5 bg-green-500/90 rounded-lg shadow-lg backdrop-blur-sm"
+                  className="absolute top-2 right-2 p-1 bg-green-600/90 dark:bg-green-500/90 rounded-md shadow-lg backdrop-blur-sm"
                   title="已在 Komga 库中"
                 >
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               )}

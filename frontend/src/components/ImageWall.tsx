@@ -481,32 +481,50 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       clearTimeout(komgaQueryTimerRef.current);
     }
 
-    // 500ms 后触发查询
+    // 2 秒后触发查询（增加防抖时间以优化性能）
     komgaQueryTimerRef.current = setTimeout(() => {
       const itemsToQuery = collectItemsToQueryKomga();
       if (itemsToQuery.length > 0) {
         batchQueryKomga(itemsToQuery);
       }
-    }, 500);
+    }, 2000);
   }, [collectItemsToQueryKomga, batchQueryKomga]);
 
   // 监听滚动事件，触发 Komga 查询
   useEffect(() => {
-    window.addEventListener('scroll', handleScrollForKomga, { passive: true });
+    // 检查 Hentai Assistant 是否启用
+    const checkAndQuery = async () => {
+      try {
+        const presets = await api.getPresetIntegrations();
+        const hentaiAssistant = presets.find(p => p.id === 'hentai-assistant');
 
-    // 组件挂载时立即查询一次（首屏内容）
-    const initialTimer = setTimeout(() => {
-      const itemsToQuery = collectItemsToQueryKomga();
-      if (itemsToQuery.length > 0) {
-        batchQueryKomga(itemsToQuery);
+        // 只有在 Hentai Assistant 启用时才添加滚动监听
+        if (!hentaiAssistant || !hentaiAssistant.enabled) {
+          console.log('[Komga] Hentai Assistant is disabled, skipping scroll listener');
+          return;
+        }
+
+        // 添加滚动监听
+        window.addEventListener('scroll', handleScrollForKomga, { passive: true });
+
+        // 首屏查询
+        const itemsToQuery = collectItemsToQueryKomga();
+        if (itemsToQuery.length > 0) {
+          batchQueryKomga(itemsToQuery);
+        }
+      } catch (error) {
+        console.error('[Komga] Failed to check Hentai Assistant status:', error);
       }
-    }, 1000); // 延迟 1 秒，等待组件完全渲染
+    };
+
+    // 延迟 1 秒，等待组件完全渲染
+    const initialTimer = setTimeout(checkAndQuery, 1000);
 
     return () => {
-      window.removeEventListener('scroll', handleScrollForKomga);
       clearTimeout(initialTimer);
+      window.removeEventListener('scroll', handleScrollForKomga);
     };
-  }, [handleScrollForKomga, collectItemsToQueryKomga, batchQueryKomga]);
+  }, [collectItemsToQueryKomga, batchQueryKomga, handleScrollForKomga]);
 
   // 处理分享（复制链接）
   const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {

@@ -180,7 +180,7 @@ function App() {
   });
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const saved = localStorage.getItem('itemsPerPage');
-    return saved ? parseInt(saved) : 20;
+    return saved ? parseInt(saved) : 50;
   });
   const [sortBy, setSortBy] = useState<'published' | 'created'>(() => {
     const saved = localStorage.getItem('sortBy');
@@ -808,7 +808,7 @@ function App() {
         observer.unobserve(currentRef);
       }
     };
-  }, [autoLoadMore, hasMore, isLoading, page]);
+  }, [autoLoadMore, hasMore, isLoading, loadMore]);
 
   const handleDeleteFeed = async (feedId: string, feedTitle: string) => {
     if (!confirm(`确定要删除订阅 "${feedTitle}" 吗？这将同时删除该订阅下的所有内容。`)) {

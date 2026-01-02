@@ -141,8 +141,56 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
   }, []);
 
   useEffect(() => {
-    loadIntegrations();
-  }, [loadIntegrations, refreshIntegrationsTrigger]);
+    if (isOpen) {
+      loadIntegrations();
+    }
+  }, [isOpen, loadIntegrations, refreshIntegrationsTrigger]);
+
+  // 自动查询 Komga 状态（如果需要）
+  useEffect(() => {
+    if (!isOpen || !item || !onItemUpdated) return;
+
+    // 检查是否需要查询 Komga 状态
+    const needsQuery =
+      (!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2) &&
+      item.link &&
+      (item.link.includes('e-hentai.org') ||
+        item.link.includes('exhentai.org') ||
+        item.link.includes('nhentai.net') ||
+        item.link.includes('hdoujin.org'));
+
+    if (needsQuery) {
+      // 延迟查询，避免阻塞 UI
+      const timer = setTimeout(async () => {
+        try {
+          // 检查 Hentai Assistant 是否启用
+          const presets = await api.getPresetIntegrations();
+          const hentaiAssistant = presets.find(p => p.id === 'hentai-assistant');
+
+          if (!hentaiAssistant || !hentaiAssistant.enabled) {
+            console.log('[ItemModal] Hentai Assistant is disabled, skipping query');
+            return;
+          }
+
+          console.log(`[ItemModal] Querying Komga status for item: ${item.id}`);
+          const result = await api.queryKomgaStatus([item.id]);
+
+          if (result.items && result.items.length > 0) {
+            const updatedItem = result.items[0];
+            onItemUpdated(item.id, {
+              komgaStatus: updatedItem.komgaStatus,
+              komgaSyncAt: updatedItem.komgaSyncAt || undefined
+            });
+            console.log(`[ItemModal] Updated Komga status: ${updatedItem.komgaStatus}`);
+          }
+        } catch (error) {
+          console.error('[ItemModal] Failed to query Komga status:', error);
+        }
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, item, onItemUpdated]);
 
   // 加载预设集成 actions
   useEffect(() => {

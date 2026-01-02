@@ -14,6 +14,30 @@ from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, 
 from app.rss_parser import parse_rss_feed, download_and_process_image
 from app.favicon_fetcher import get_favicon_url
 
+# Hentai Assistant 支持的域名列表（统一配置）
+HENTAI_ASSISTANT_DOMAINS = [
+    'e-hentai.org',
+    'exhentai.org',
+    'hdoujin.org',
+    'nhentai.net',
+]
+
+def is_hentai_assistant_compatible_url(url: str) -> bool:
+    """
+    检查 URL 是否属于 Hentai Assistant 支持的域名。
+    
+    Args:
+        url: 要检查的 URL
+    
+    Returns:
+        如果 URL 匹配支持的域名则返回 True，否则返回 False
+    """
+    if not url:
+        return False
+    
+    url_lower = url.lower()
+    return any(domain in url_lower for domain in HENTAI_ASSISTANT_DOMAINS)
+
 app = FastAPI(title="RSS Image Wall API")
 
 # CORS
@@ -164,6 +188,87 @@ def retry_failed_images(db: Session, feed_id: str, max_retries: int = 5):
         print(f"Retried {retried} failed images, {success} succeeded for feed {feed_id}")
 
 
+async def query_komga_status(api_url: str, urls: list[str]) -> dict:
+    """
+    调用 Hentai Assistant 的 Komga 索引查询接口。
+    
+    Args:
+        api_url: Hentai Assistant API 基础 URL
+        urls: 要查询的 URL 列表
+    
+    Returns:
+        查询结果字典，包含 summary 和 results
+    """
+    import httpx
+    
+    if not api_url or not urls:
+        return {"summary": {"total": 0, "found": 0, "missing": 0}, "results": {}}
+    
+    query_url = f"{api_url.rstrip('/')}/api/komga/index/query"
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                query_url,
+                json={"urls": urls},
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        print(f"Error querying Komga status: {e}")
+        return {"summary": {"total": 0, "found": 0, "missing": 0}, "results": {}}
+
+
+async def update_items_komga_status(db: Session, items: list[FeedItem], api_url: str):
+    """
+    批量更新条目的 Komga 状态。
+    
+    Args:
+        db: 数据库会话
+        items: 要更新的 FeedItem 列表
+        api_url: Hentai Assistant API 基础 URL
+    """
+    if not items or not api_url:
+        return
+    
+    # 收集所有需要查询的 URL
+    urls = [item.link for item in items if item.link]
+    if not urls:
+        return
+    
+    # 调用 Komga 查询接口
+    try:
+        result = await query_komga_status(api_url, urls)
+    except Exception as e:
+        print(f"Failed to query Komga status: {e}")
+        return
+    
+    # 更新数据库
+    now = datetime.utcnow()
+    updated_count = 0
+    
+    for item in items:
+        if not item.link:
+            continue
+        
+        item_result = result.get("results", {}).get(item.link)
+        if item_result is not None:
+            # 1 = 已收录, 2 = 未收录
+            # Komga API 返回的字段名是 "found"，不是 "status"
+            item.komga_status = 1 if item_result.get("found") else 2
+            item.komga_sync_at = now
+            updated_count += 1
+        else:
+            # 查询失败或未返回结果，标记为不在库
+            item.komga_status = 2
+            item.komga_sync_at = now
+    
+    if updated_count > 0:
+        db.commit()
+        print(f"Updated Komga status for {updated_count} items")
+
+
 def fetch_all_feeds():
     """Background task to fetch all active feeds"""
     try:
@@ -182,6 +287,7 @@ def fetch_all_feeds():
                 result = parse_rss_feed(feed.url)
                 
                 new_items = 0
+                new_items_list = []  # 收集本次新添加的条目
                 for entry_data in result['entries']:
                     # Check if item already exists (优先使用 guid,后备使用 link)
                     existing = None
@@ -213,6 +319,7 @@ def fetch_all_feeds():
                         published_at=entry_data['published_at'],
                     )
                     db.add(item)
+                    new_items_list.append(item)  # 收集新添加的条目
                     new_items += 1
                 
                 # Update feed's last_fetched_at and clear error
@@ -221,6 +328,43 @@ def fetch_all_feeds():
                 db.commit()
                 
                 print(f"Added {new_items} new items from {feed.title}")
+                
+                # 查询新记录的 Komga 状态（仅本次新添加的记录）
+                if new_items > 0 and new_items_list:
+                    try:
+                        # 检查 Hentai Assistant 预设是否启用
+                        ha_preset = db.query(PresetIntegration).filter(
+                            PresetIntegration.id == 'hentai-assistant',
+                            PresetIntegration.enabled == True
+                        ).first()
+                        
+                        if ha_preset and ha_preset.api_url:
+                            # 检查 Komga 查询开关是否启用
+                            enable_komga_query = True  # 默认启用
+                            if ha_preset.config:
+                                try:
+                                    config = json.loads(ha_preset.config)
+                                    enable_komga_query = config.get('enable_komga_query', True)
+                                except:
+                                    pass
+                            
+                            if enable_komga_query:
+                                # 过滤出支持的域名
+                                compatible_items = [
+                                    item for item in new_items_list 
+                                    if is_hentai_assistant_compatible_url(item.link)
+                                ]
+                                
+                                if compatible_items:
+                                    print(f"Querying Komga status for {len(compatible_items)}/{len(new_items_list)} compatible items...")
+                                    update_items_komga_status(db, compatible_items, ha_preset.api_url)
+                                else:
+                                    print(f"No compatible URLs found in {len(new_items_list)} new items")
+                            else:
+                                print("Komga query is disabled in settings")
+                    except Exception as e:
+                        print(f"Error querying Komga status: {e}")
+                        # 不影响主流程，继续执行
                 
                 # 重试之前失败的图片（每次最多 5 个）
                 retry_failed_images(db, feed.id)
@@ -861,6 +1005,8 @@ def get_items(
             "created_at": item.created_at,
             "is_unread": is_unread,
             "is_favorite": item.is_favorite,
+            "komga_status": item.komga_status,
+            "komga_sync_at": item.komga_sync_at,
             "feed": feed_brief,
         }
         result_items.append(FeedItemResponse(**item_dict))
@@ -927,6 +1073,79 @@ def refresh_item_image(item_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to refresh image: {str(e)}")
+
+
+@app.post("/api/items/query-komga")
+async def query_items_komga_status(
+    item_ids: list[str],
+    db: Session = Depends(get_db)
+):
+    """
+    批量查询指定条目的 Komga 状态。
+    前端调用此接口来更新旧记录的 Komga 状态。
+    """
+    print(f"[Komga API] Received query request for {len(item_ids)} items")
+    
+    if not item_ids:
+        raise HTTPException(status_code=400, detail="No item IDs provided")
+    
+    # 检查 Hentai Assistant 预设是否启用
+    ha_preset = db.query(PresetIntegration).filter(
+        PresetIntegration.id == 'hentai-assistant',
+        PresetIntegration.enabled == True
+    ).first()
+    
+    print(f"[Komga API] Hentai Assistant enabled: {ha_preset is not None}, API URL: {ha_preset.api_url if ha_preset else 'N/A'}")
+    
+    if not ha_preset or not ha_preset.api_url:
+        raise HTTPException(status_code=400, detail="Hentai Assistant is not enabled or configured")
+    
+    # 检查 Komga 查询开关是否启用
+    enable_komga_query = True  # 默认启用
+    if ha_preset.config:
+        try:
+            config = json.loads(ha_preset.config)
+            enable_komga_query = config.get('enable_komga_query', True)
+        except:
+            pass
+    
+    print(f"[Komga API] Komga query enabled: {enable_komga_query}")
+    
+    if not enable_komga_query:
+        raise HTTPException(status_code=400, detail="Komga query is disabled in settings")
+    
+    # 获取要查询的条目
+    items = db.query(FeedItem).filter(FeedItem.id.in_(item_ids)).all()
+    print(f"[Komga API] Found {len(items)} items in database")
+    
+    if not items:
+        return {"success": True, "updated": 0}
+    
+    # 执行批量查询
+    try:
+        print(f"[Komga API] Calling update_items_komga_status...")
+        await update_items_komga_status(db, items, ha_preset.api_url)
+        print(f"[Komga API] Query completed successfully")
+        
+        # 返回更新后的记录数据
+        updated_items = []
+        for item in items:
+            updated_items.append({
+                "id": item.id,
+                "komgaStatus": item.komga_status,
+                "komgaSyncAt": item.komga_sync_at.isoformat() if item.komga_sync_at else None
+            })
+        
+        return {
+            "success": True, 
+            "updated": len(items),
+            "items": updated_items
+        }
+    except Exception as e:
+        print(f"[Komga API] Error in query_items_komga_status: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to query Komga status: {str(e)}")
 
 
 # ==================== 集成 API ====================

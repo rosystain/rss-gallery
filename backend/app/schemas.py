@@ -53,6 +53,8 @@ class FeedItemResponse(BaseModel):
     feed: Optional[FeedBriefResponse] = None
     is_unread: Optional[bool] = None
     is_favorite: Optional[bool] = None
+    komga_status: Optional[int] = None
+    komga_sync_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

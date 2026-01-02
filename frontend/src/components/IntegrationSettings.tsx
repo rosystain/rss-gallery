@@ -117,7 +117,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
-      
+
       // 并行加载自定义集成和预设集成
       Promise.all([
         api.getIntegrations(),
@@ -125,7 +125,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
       ])
         .then(([customInts, presetInts]) => {
           setCustomIntegrations(customInts);
-          
+
           // 合并数据库的配置和默认配置
           // 始终使用 defaultPresets 的 name 和 icon，但使用数据库的 enabled 和 apiUrl
           const mergedPresets = defaultPresets.map(defaultPreset => {
@@ -142,7 +142,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
             };
           });
           setPresets(mergedPresets);
-          
+
           // 自动尝试加载收藏夹分类（消极策略：失败则静默忽略）
           const haPreset = mergedPresets.find(p => p.id === 'hentai-assistant');
           if (haPreset?.enabled && haPreset.apiUrl) {
@@ -228,7 +228,7 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
   // 删除集成
   const handleDelete = async (id: string) => {
     if (!confirm('确定要删除这个集成吗？')) return;
-    
+
     try {
       await api.deleteIntegration(id);
       setCustomIntegrations(prev => prev.filter(i => i.id !== id));
@@ -298,21 +298,19 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
           <div className="flex gap-4">
             <button
               onClick={() => setActiveTab('integrations')}
-              className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'integrations'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text'
-              }`}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'integrations'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text'
+                }`}
             >
               集成
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-                activeTab === 'history'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text'
-              }`}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'history'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text'
+                }`}
             >
               执行历史
               {executionHistory.length > 0 && (
@@ -343,13 +341,12 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                   </div>
                   <div className="space-y-3">
                     {executionHistory.map((entry) => (
-                      <div 
+                      <div
                         key={entry.id}
-                        className={`rounded-lg p-3 ${
-                          entry.type === 'success'
-                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                        }`}
+                        className={`rounded-lg p-3 ${entry.type === 'success'
+                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                          : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                          }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           {entry.type === 'success' ? (
@@ -361,9 +358,8 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           )}
-                          <span className={`text-sm font-medium ${
-                            entry.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-                          }`}>
+                          <span className={`text-sm font-medium ${entry.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+                            }`}>
                             {entry.integrationName}
                           </span>
                           <span className="text-xs text-gray-400 dark:text-dark-text-secondary ml-auto">
@@ -371,11 +367,10 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
                           </span>
                         </div>
                         {entry.detail && (
-                          <pre className={`text-xs overflow-auto max-h-24 p-2 rounded whitespace-pre-wrap break-all ${
-                            entry.type === 'success'
-                              ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                              : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
-                          }`}>
+                          <pre className={`text-xs overflow-auto max-h-24 p-2 rounded whitespace-pre-wrap break-all ${entry.type === 'success'
+                            ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                            : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                            }`}>
                             {entry.detail}
                           </pre>
                         )}
@@ -390,486 +385,534 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
           {/* 集成 Tab */}
           {activeTab === 'integrations' && (
             <>
-          {/* 预设集成 */}
-          <section>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-3">预设集成</h3>
-            <div className="space-y-2">
-              {presets.map((preset) => (
-                <div key={preset.id}>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {/* Hentai Assistant Icon */}
-                      {preset.icon === 'hentai-assistant' && (
-                        <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      )}
-                      <span className="text-gray-900 dark:text-dark-text">{preset.name}</span>
-                    </div>
-                    {preset.id === 'hentai-assistant' ? (
-                      <label className="flex items-center cursor-pointer">
-                        <div className="relative inline-block w-11 h-6">
-                          <input
-                            type="checkbox"
-                            checked={preset.enabled}
-                            onChange={async (e) => {
-                              const newEnabled = e.target.checked;
-                              const newPresets = presets.map(p => 
-                                p.id === preset.id ? { ...p, enabled: newEnabled } : p
-                              );
-                              setPresets(newPresets);
-                              
-                              // 保存到数据库
-                              try {
-                                await api.updatePresetIntegration(preset.id, { enabled: newEnabled });
-                                // 通知外部刷新
-                                onIntegrationsChange?.();
-                              } catch (err) {
-                                console.error('Failed to update preset integration:', err);
-                              }
-                            }}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-300 transition-colors"></div>
-                          <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+              {/* 预设集成 */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-3">预设集成</h3>
+                <div className="space-y-2">
+                  {presets.map((preset) => (
+                    <div key={preset.id}>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {/* Hentai Assistant Icon */}
+                          {preset.icon === 'hentai-assistant' && (
+                            <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          )}
+                          <span className="text-gray-900 dark:text-dark-text">{preset.name}</span>
                         </div>
-                      </label>
-                    ) : (
-                      <span className="text-xs text-gray-400 dark:text-dark-text-secondary">即将推出</span>
-                    )}
-                  </div>
-                  
-                  {/* Hentai Assistant 配置区域 */}
-                  {preset.id === 'hentai-assistant' && preset.enabled && (
-                    <div className="mt-2 ml-8 mr-3 p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border space-y-3">
-                      <div>
-                        <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                          API URL
-                        </label>
-                        <input
-                          type="text"
-                          value={preset.apiUrl || ''}
-                          onChange={(e) => {
-                            const newApiUrl = e.target.value;
-                            const newPresets = presets.map(p => 
-                              p.id === preset.id ? { ...p, apiUrl: newApiUrl } : p
-                            );
-                            setPresets(newPresets);
-                          }}
-                          onBlur={async (e) => {
-                            // 失去焦点时保存到数据库
-                            try {
-                              await api.updatePresetIntegration(preset.id, { apiUrl: e.target.value });
-                            } catch (err) {
-                              console.error('Failed to update preset integration:', err);
-                            }
-                          }}
-                          placeholder="https://your-api-url.com"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleTestApiConnection(preset)}
-                          disabled={!preset.apiUrl || testingApi === preset.id}
-                          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-                        >
-                          {testingApi === preset.id ? '测试中...' : '测试连通性'}
-                        </button>
-                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
-                          将请求 {preset.apiUrl}/api/config
-                        </span>
+                        {preset.id === 'hentai-assistant' ? (
+                          <label className="flex items-center cursor-pointer">
+                            <div className="relative inline-block w-11 h-6">
+                              <input
+                                type="checkbox"
+                                checked={preset.enabled}
+                                onChange={async (e) => {
+                                  const newEnabled = e.target.checked;
+                                  const newPresets = presets.map(p =>
+                                    p.id === preset.id ? { ...p, enabled: newEnabled } : p
+                                  );
+                                  setPresets(newPresets);
+
+                                  // 保存到数据库
+                                  try {
+                                    await api.updatePresetIntegration(preset.id, { enabled: newEnabled });
+                                    // 通知外部刷新
+                                    onIntegrationsChange?.();
+                                  } catch (err) {
+                                    console.error('Failed to update preset integration:', err);
+                                  }
+                                }}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-300 transition-colors"></div>
+                              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                            </div>
+                          </label>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-dark-text-secondary">即将推出</span>
+                        )}
                       </div>
 
-                      {/* 收藏夹配置 */}
-                      <div className="pt-3 border-t border-gray-200 dark:border-dark-border">
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-2">收藏夹设置</h4>
-                        <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-3">仅支持 E-Hentai (e-hentai.org / exhentai.org)</p>
-                        
-                        <div className="space-y-3">
-                          {/* 默认收藏夹选择 */}
+                      {/* Hentai Assistant 配置区域 */}
+                      {preset.id === 'hentai-assistant' && preset.enabled && (
+                        <div className="mt-2 ml-8 mr-3 p-4 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-dark-border space-y-3">
                           <div>
                             <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                              默认收藏夹
+                              API URL
                             </label>
-                            <select
-                              value={preset.defaultFavcat || ''}
-                              onChange={async (e) => {
-                                const newFavcat = e.target.value;
-                                const newPresets = presets.map(p => 
-                                  p.id === preset.id ? { ...p, defaultFavcat: newFavcat } : p
-                                );
-                                setPresets(newPresets);
-                                
-                                // 保存到数据库
-                                try {
-                                  await api.updatePresetIntegration(preset.id, { defaultFavcat: newFavcat });
-                                } catch (err) {
-                                  console.error('Failed to update preset integration:', err);
-                                }
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="">请选择收藏夹</option>
-                              {favoriteCategories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* 默认收藏笔记 */}
-                          <div>
-                            <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                              默认收藏笔记（可选）
-                            </label>
-                            <textarea
-                              value={preset.defaultNote || ''}
+                            <input
+                              type="text"
+                              value={preset.apiUrl || ''}
                               onChange={(e) => {
-                                const newNote = e.target.value;
-                                const newPresets = presets.map(p => 
-                                  p.id === preset.id ? { ...p, defaultNote: newNote } : p
+                                const newApiUrl = e.target.value;
+                                const newPresets = presets.map(p =>
+                                  p.id === preset.id ? { ...p, apiUrl: newApiUrl } : p
                                 );
                                 setPresets(newPresets);
                               }}
                               onBlur={async (e) => {
                                 // 失去焦点时保存到数据库
                                 try {
-                                  await api.updatePresetIntegration(preset.id, { defaultNote: e.target.value });
+                                  await api.updatePresetIntegration(preset.id, { apiUrl: e.target.value });
                                 } catch (err) {
                                   console.error('Failed to update preset integration:', err);
                                 }
                               }}
-                              placeholder="输入默认笔记（非必须）"
-                              rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                              placeholder="https://your-api-url.com"
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleTestApiConnection(preset)}
+                              disabled={!preset.apiUrl || testingApi === preset.id}
+                              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                            >
+                              {testingApi === preset.id ? '测试中...' : '测试连通性'}
+                            </button>
+                            <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
+                              将请求 {preset.apiUrl}/api/config
+                            </span>
+                          </div>
+
+                          {/* 收藏夹配置 */}
+                          <div className="pt-3 border-t border-gray-200 dark:border-dark-border">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-2">收藏夹设置</h4>
+                            <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-3">仅支持 E-Hentai (e-hentai.org / exhentai.org)</p>
+
+                            <div className="space-y-3">
+                              {/* 默认收藏夹选择 */}
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                                  默认收藏夹
+                                </label>
+                                <select
+                                  value={preset.defaultFavcat || ''}
+                                  onChange={async (e) => {
+                                    const newFavcat = e.target.value;
+                                    const newPresets = presets.map(p =>
+                                      p.id === preset.id ? { ...p, defaultFavcat: newFavcat } : p
+                                    );
+                                    setPresets(newPresets);
+
+                                    // 保存到数据库
+                                    try {
+                                      await api.updatePresetIntegration(preset.id, { defaultFavcat: newFavcat });
+                                    } catch (err) {
+                                      console.error('Failed to update preset integration:', err);
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                  <option value="">请选择收藏夹</option>
+                                  {favoriteCategories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                      {cat.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* 默认收藏笔记 */}
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                                  默认收藏笔记（可选）
+                                </label>
+                                <textarea
+                                  value={preset.defaultNote || ''}
+                                  onChange={(e) => {
+                                    const newNote = e.target.value;
+                                    const newPresets = presets.map(p =>
+                                      p.id === preset.id ? { ...p, defaultNote: newNote } : p
+                                    );
+                                    setPresets(newPresets);
+                                  }}
+                                  onBlur={async (e) => {
+                                    // 失去焦点时保存到数据库
+                                    try {
+                                      await api.updatePresetIntegration(preset.id, { defaultNote: e.target.value });
+                                    } catch (err) {
+                                      console.error('Failed to update preset integration:', err);
+                                    }
+                                  }}
+                                  placeholder="输入默认笔记（非必须）"
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Komga 查询功能开关 */}
+                          <div className="pt-3 border-t border-gray-200 dark:border-dark-border">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-2">Komga 库存查询</h4>
+                            <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-3">
+                              自动查询条目是否已在 Komga 库中收录
+                            </p>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`komga-query-${preset.id}`}
+                                checked={(() => {
+                                  try {
+                                    const config = preset.config || {};
+                                    return config.enable_komga_query !== false; // 默认启用
+                                  } catch {
+                                    return true;
+                                  }
+                                })()}
+                                onChange={async (e) => {
+                                  const enabled = e.target.checked;
+                                  const newConfig = { ...(preset.config || {}), enable_komga_query: enabled };
+
+                                  // 更新本地状态
+                                  const newPresets = presets.map(p =>
+                                    p.id === preset.id ? { ...p, config: newConfig } : p
+                                  );
+                                  setPresets(newPresets);
+
+                                  // 保存到数据库
+                                  try {
+                                    await api.updatePresetIntegration(preset.id, { config: newConfig });
+                                  } catch (err) {
+                                    console.error('Failed to update Komga query setting:', err);
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor={`komga-query-${preset.id}`} className="text-sm text-gray-700 dark:text-dark-text cursor-pointer">
+                                启用 Komga 库存查询
+                              </label>
+                            </div>
+
+                            <p className="text-xs text-gray-500 dark:text-dark-text-secondary mt-2 ml-6">
+                              • 新记录：后端自动查询<br />
+                              • 旧记录：前端浏览时按需查询
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* 自定义集成 */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text">自定义集成</h3>
-              <button
-                onClick={handleCreateNew}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                新建
-              </button>
-            </div>
-
-            {/* 集成列表 */}
-            {customIntegrations.length === 0 && !editingIntegration ? (
-              <div className="text-center py-8 text-gray-400 dark:text-dark-text-secondary">
-                <p>暂无自定义集成</p>
-                <p className="text-sm mt-1">点击"新建"添加自定义集成</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {customIntegrations.map((integration) => (
-                  <div
-                    key={integration.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Custom Icon or Default Type Icon */}
-                      {integration.icon ? (
-                        <IntegrationIconComponent icon={integration.icon} className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" />
-                      ) : integration.type === 'url' ? (
-                        <svg className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
                       )}
-                      <div>
-                        <div className="text-gray-900 dark:text-dark-text">{integration.name}</div>
-                        <div className="text-xs text-gray-400 dark:text-dark-text-secondary">
-                          {integration.type === 'url' ? 'URL 跳转' : `Webhook (${integration.webhookMethod})`}
-                          <span className="mx-1">•</span>
-                          <span className="font-mono">{integration.id}</span>
-                        </div>
-                      </div>
                     </div>
-                    <button
-                      onClick={() => handleEdit(integration)}
-                      className="text-sm text-gray-500 hover:text-gray-700 dark:text-dark-text-secondary dark:hover:text-dark-text"
-                    >
-                      编辑
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              </section>
 
-          {/* 编辑/创建表单 */}
-          {editingIntegration && (
-            <section className="border-t border-gray-200 dark:border-dark-border pt-6">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-4">
-                {isCreating ? '新建集成' : '编辑集成'}
-              </h3>
-              
-              <div className="space-y-4">
-                {/* 名称 */}
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                    名称
-                  </label>
-                  <input
-                    type="text"
-                    value={editingIntegration.name}
-                    onChange={(e) =>
-                      setEditingIntegration({ ...editingIntegration, name: e.target.value })
-                    }
-                    placeholder="集成名称"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              {/* 自定义集成 */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text">自定义集成</h3>
+                  <button
+                    onClick={handleCreateNew}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    新建
+                  </button>
                 </div>
 
-                {/* 图标选择 */}
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-2">
-                    图标
-                  </label>
-                  <div className="grid grid-cols-10 gap-1">
-                    {AVAILABLE_ICONS.map((iconOption) => (
-                      <button
-                        key={iconOption.id}
-                        type="button"
-                        onClick={() =>
-                          setEditingIntegration({ ...editingIntegration, icon: iconOption.id })
-                        }
-                        className={`p-2 rounded-lg transition-colors ${
-                          editingIntegration.icon === iconOption.id
-                            ? 'bg-gray-200 dark:bg-dark-border text-gray-900 dark:text-dark-text'
-                            : 'hover:bg-gray-100 dark:hover:bg-dark-hover text-gray-500 dark:text-dark-text-secondary'
-                        }`}
-                        title={iconOption.label}
+                {/* 集成列表 */}
+                {customIntegrations.length === 0 && !editingIntegration ? (
+                  <div className="text-center py-8 text-gray-400 dark:text-dark-text-secondary">
+                    <p>暂无自定义集成</p>
+                    <p className="text-sm mt-1">点击"新建"添加自定义集成</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {customIntegrations.map((integration) => (
+                      <div
+                        key={integration.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg"
                       >
-                        <IntegrationIconComponent icon={iconOption.id} className="w-5 h-5" />
-                      </button>
+                        <div className="flex items-center gap-3">
+                          {/* Custom Icon or Default Type Icon */}
+                          {integration.icon ? (
+                            <IntegrationIconComponent icon={integration.icon} className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" />
+                          ) : integration.type === 'url' ? (
+                            <svg className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-gray-500 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                          <div>
+                            <div className="text-gray-900 dark:text-dark-text">{integration.name}</div>
+                            <div className="text-xs text-gray-400 dark:text-dark-text-secondary">
+                              {integration.type === 'url' ? 'URL 跳转' : `Webhook (${integration.webhookMethod})`}
+                              <span className="mx-1">•</span>
+                              <span className="font-mono">{integration.id}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleEdit(integration)}
+                          className="text-sm text-gray-500 hover:text-gray-700 dark:text-dark-text-secondary dark:hover:text-dark-text"
+                        >
+                          编辑
+                        </button>
+                      </div>
                     ))}
                   </div>
-                </div>
-
-                {/* 类型 */}
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                    类型
-                  </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="type"
-                        checked={editingIntegration.type === 'url'}
-                        onChange={() =>
-                          setEditingIntegration({ ...editingIntegration, type: 'url' as IntegrationType })
-                        }
-                        className="text-blue-600"
-                      />
-                      <span className="text-gray-700 dark:text-dark-text">URL 跳转</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="type"
-                        checked={editingIntegration.type === 'webhook'}
-                        onChange={() =>
-                          setEditingIntegration({
-                            ...editingIntegration,
-                            type: 'webhook' as IntegrationType,
-                            webhookMethod: editingIntegration.webhookMethod || 'POST',
-                          })
-                        }
-                        className="text-blue-600"
-                      />
-                      <span className="text-gray-700 dark:text-dark-text">Webhook</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* URL 跳转配置 */}
-                {editingIntegration.type === 'url' && (
-                  <div>
-                    <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                      跳转 URL
-                    </label>
-                    <input
-                      type="text"
-                      value={editingIntegration.url || ''}
-                      onChange={(e) =>
-                        setEditingIntegration({ ...editingIntegration, url: e.target.value })
-                      }
-                      placeholder="https://example.com/search?q={title}"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                    />
-                  </div>
                 )}
+              </section>
 
-                {/* Webhook 配置 */}
-                {editingIntegration.type === 'webhook' && (
-                  <>
+              {/* 编辑/创建表单 */}
+              {editingIntegration && (
+                <section className="border-t border-gray-200 dark:border-dark-border pt-6">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-dark-text mb-4">
+                    {isCreating ? '新建集成' : '编辑集成'}
+                  </h3>
+
+                  <div className="space-y-4">
+                    {/* 名称 */}
                     <div>
                       <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                        请求方式
+                        名称
+                      </label>
+                      <input
+                        type="text"
+                        value={editingIntegration.name}
+                        onChange={(e) =>
+                          setEditingIntegration({ ...editingIntegration, name: e.target.value })
+                        }
+                        placeholder="集成名称"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    {/* 图标选择 */}
+                    <div>
+                      <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-2">
+                        图标
+                      </label>
+                      <div className="grid grid-cols-10 gap-1">
+                        {AVAILABLE_ICONS.map((iconOption) => (
+                          <button
+                            key={iconOption.id}
+                            type="button"
+                            onClick={() =>
+                              setEditingIntegration({ ...editingIntegration, icon: iconOption.id })
+                            }
+                            className={`p-2 rounded-lg transition-colors ${editingIntegration.icon === iconOption.id
+                              ? 'bg-gray-200 dark:bg-dark-border text-gray-900 dark:text-dark-text'
+                              : 'hover:bg-gray-100 dark:hover:bg-dark-hover text-gray-500 dark:text-dark-text-secondary'
+                              }`}
+                            title={iconOption.label}
+                          >
+                            <IntegrationIconComponent icon={iconOption.id} className="w-5 h-5" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 类型 */}
+                    <div>
+                      <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                        类型
                       </label>
                       <div className="flex gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="method"
-                            checked={editingIntegration.webhookMethod === 'GET'}
+                            name="type"
+                            checked={editingIntegration.type === 'url'}
                             onChange={() =>
-                              setEditingIntegration({
-                                ...editingIntegration,
-                                webhookMethod: 'GET' as WebhookMethod,
-                              })
+                              setEditingIntegration({ ...editingIntegration, type: 'url' as IntegrationType })
                             }
                             className="text-blue-600"
                           />
-                          <span className="text-gray-700 dark:text-dark-text">GET</span>
+                          <span className="text-gray-700 dark:text-dark-text">URL 跳转</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="method"
-                            checked={editingIntegration.webhookMethod === 'POST'}
+                            name="type"
+                            checked={editingIntegration.type === 'webhook'}
                             onChange={() =>
                               setEditingIntegration({
                                 ...editingIntegration,
-                                webhookMethod: 'POST' as WebhookMethod,
+                                type: 'webhook' as IntegrationType,
+                                webhookMethod: editingIntegration.webhookMethod || 'POST',
                               })
                             }
                             className="text-blue-600"
                           />
-                          <span className="text-gray-700 dark:text-dark-text">POST</span>
+                          <span className="text-gray-700 dark:text-dark-text">Webhook</span>
                         </label>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                        Webhook URL
-                      </label>
-                      <input
-                        type="text"
-                        value={editingIntegration.webhookUrl || ''}
-                        onChange={(e) =>
-                          setEditingIntegration({ ...editingIntegration, webhookUrl: e.target.value })
-                        }
-                        placeholder="https://api.example.com/webhook?title={title}"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                      />
-                    </div>
-
-                    {editingIntegration.webhookMethod === 'POST' && (
+                    {/* URL 跳转配置 */}
+                    {editingIntegration.type === 'url' && (
                       <div>
                         <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
-                          请求体 (JSON)
+                          跳转 URL
                         </label>
-                        <textarea
-                          value={editingIntegration.webhookBody || ''}
+                        <input
+                          type="text"
+                          value={editingIntegration.url || ''}
                           onChange={(e) =>
-                            setEditingIntegration({ ...editingIntegration, webhookBody: e.target.value })
+                            setEditingIntegration({ ...editingIntegration, url: e.target.value })
                           }
-                          placeholder={`{\n  "title": "{{ title }}",\n  "url": "{{ url }}"\n}`}
-                          rows={5}
+                          placeholder="https://example.com/search?q={title}"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                         />
                       </div>
                     )}
-                  </>
-                )}
 
-                {/* 变量说明 */}
-                <div className="bg-gray-50 dark:bg-dark-hover rounded-lg p-3 space-y-3">
-                  <div>
-                    <div className="text-xs font-medium text-gray-600 dark:text-dark-text-secondary mb-1.5">
-                      基础变量（自动 URL 编码）：
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <code className="px-2 py-0.5 bg-gray-200 dark:bg-dark-border rounded text-xs text-gray-700 dark:text-dark-text">
-                        {'{{ url }}'}
-                      </code>
-                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary">原文链接</span>
-                      <code className="px-2 py-0.5 bg-gray-200 dark:bg-dark-border rounded text-xs text-gray-700 dark:text-dark-text ml-2">
-                        {'{{ title }}'}
-                      </code>
-                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary">文章标题</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-xs font-medium text-gray-600 dark:text-dark-text-secondary mb-1.5">
-                      高级语法（支持过滤器）：
-                    </div>
-                    <div className="space-y-1 text-xs text-gray-500 dark:text-dark-text-secondary">
-                      <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | regex:\'pattern\':0 }}'}</code> 正则提取</div>
-                      <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | replace:\'pattern\':\'new\' }}'}</code> 正则替换</div>
-                      <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | split:\'-\':0 }}'}</code> 分割取值</div>
-                      <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | truncate:50 }}'}</code> 截断</div>
-                      <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | lower | urlencode }}'}</code> 链式过滤器</div>
-                    </div>
-                    <div className="mt-1.5 text-xs text-gray-400 dark:text-dark-text-secondary">
-                      更多过滤器：upper, trim, number, default, base64, json, raw
-                    </div>
-                  </div>
-                </div>
+                    {/* Webhook 配置 */}
+                    {editingIntegration.type === 'webhook' && (
+                      <>
+                        <div>
+                          <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                            请求方式
+                          </label>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="method"
+                                checked={editingIntegration.webhookMethod === 'GET'}
+                                onChange={() =>
+                                  setEditingIntegration({
+                                    ...editingIntegration,
+                                    webhookMethod: 'GET' as WebhookMethod,
+                                  })
+                                }
+                                className="text-blue-600"
+                              />
+                              <span className="text-gray-700 dark:text-dark-text">GET</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="method"
+                                checked={editingIntegration.webhookMethod === 'POST'}
+                                onChange={() =>
+                                  setEditingIntegration({
+                                    ...editingIntegration,
+                                    webhookMethod: 'POST' as WebhookMethod,
+                                  })
+                                }
+                                className="text-blue-600"
+                              />
+                              <span className="text-gray-700 dark:text-dark-text">POST</span>
+                            </label>
+                          </div>
+                        </div>
 
-                {/* ID 显示 */}
-                {!isCreating && (
-                  <div className="text-xs text-gray-400 dark:text-dark-text-secondary">
-                    ID: <code className="font-mono">{editingIntegration.id}</code>
-                  </div>
-                )}
+                        <div>
+                          <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                            Webhook URL
+                          </label>
+                          <input
+                            type="text"
+                            value={editingIntegration.webhookUrl || ''}
+                            onChange={(e) =>
+                              setEditingIntegration({ ...editingIntegration, webhookUrl: e.target.value })
+                            }
+                            placeholder="https://api.example.com/webhook?title={title}"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                          />
+                        </div>
 
-                {/* 操作按钮 */}
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    {!isCreating && (
-                      <button
-                        onClick={() => handleDelete(editingIntegration.id)}
-                        className="text-sm text-red-500 hover:text-red-600"
-                      >
-                        删除
-                      </button>
+                        {editingIntegration.webhookMethod === 'POST' && (
+                          <div>
+                            <label className="block text-sm text-gray-600 dark:text-dark-text-secondary mb-1">
+                              请求体 (JSON)
+                            </label>
+                            <textarea
+                              value={editingIntegration.webhookBody || ''}
+                              onChange={(e) =>
+                                setEditingIntegration({ ...editingIntegration, webhookBody: e.target.value })
+                              }
+                              placeholder={`{\n  "title": "{{ title }}",\n  "url": "{{ url }}"\n}`}
+                              rows={5}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-hover text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
+
+                    {/* 变量说明 */}
+                    <div className="bg-gray-50 dark:bg-dark-hover rounded-lg p-3 space-y-3">
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 dark:text-dark-text-secondary mb-1.5">
+                          基础变量（自动 URL 编码）：
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <code className="px-2 py-0.5 bg-gray-200 dark:bg-dark-border rounded text-xs text-gray-700 dark:text-dark-text">
+                            {'{{ url }}'}
+                          </code>
+                          <span className="text-xs text-gray-500 dark:text-dark-text-secondary">原文链接</span>
+                          <code className="px-2 py-0.5 bg-gray-200 dark:bg-dark-border rounded text-xs text-gray-700 dark:text-dark-text ml-2">
+                            {'{{ title }}'}
+                          </code>
+                          <span className="text-xs text-gray-500 dark:text-dark-text-secondary">文章标题</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 dark:text-dark-text-secondary mb-1.5">
+                          高级语法（支持过滤器）：
+                        </div>
+                        <div className="space-y-1 text-xs text-gray-500 dark:text-dark-text-secondary">
+                          <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | regex:\'pattern\':0 }}'}</code> 正则提取</div>
+                          <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | replace:\'pattern\':\'new\' }}'}</code> 正则替换</div>
+                          <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | split:\'-\':0 }}'}</code> 分割取值</div>
+                          <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | truncate:50 }}'}</code> 截断</div>
+                          <div><code className="bg-gray-200 dark:bg-dark-border px-1 rounded">{'{{ title | lower | urlencode }}'}</code> 链式过滤器</div>
+                        </div>
+                        <div className="mt-1.5 text-xs text-gray-400 dark:text-dark-text-secondary">
+                          更多过滤器：upper, trim, number, default, base64, json, raw
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ID 显示 */}
+                    {!isCreating && (
+                      <div className="text-xs text-gray-400 dark:text-dark-text-secondary">
+                        ID: <code className="font-mono">{editingIntegration.id}</code>
+                      </div>
+                    )}
+
+                    {/* 操作按钮 */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div>
+                        {!isCreating && (
+                          <button
+                            onClick={() => handleDelete(editingIntegration.id)}
+                            className="text-sm text-red-500 hover:text-red-600"
+                          >
+                            删除
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
+                        >
+                          取消
+                        </button>
+                        <button
+                          onClick={handleSaveIntegration}
+                          className="px-4 py-2 bg-gray-700 dark:bg-dark-border text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition"
+                        >
+                          保存
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"
-                    >
-                      取消
-                    </button>
-                    <button
-                      onClick={handleSaveIntegration}
-                      className="px-4 py-2 bg-gray-700 dark:bg-dark-border text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition"
-                    >
-                      保存
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
+                </section>
+              )}
             </>
           )}
         </div>
@@ -884,10 +927,10 @@ export async function getCustomIntegrationsAsync(): Promise<CustomIntegration[]>
 }
 
 // 检查 URL 是否匹配 Hentai Assistant 支持的域名
-function isHentaiAssistantCompatible(url: string): boolean {
+export function isHentaiAssistantCompatible(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    return HENTAI_ASSISTANT_DOMAINS.some(domain => 
+    return HENTAI_ASSISTANT_DOMAINS.some(domain =>
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
   } catch {
@@ -899,7 +942,7 @@ function isHentaiAssistantCompatible(url: string): boolean {
 export function isHentaiAssistantFavoriteCompatible(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    const isCompatible = HENTAI_ASSISTANT_FAVORITE_DOMAINS.some(domain => 
+    const isCompatible = HENTAI_ASSISTANT_FAVORITE_DOMAINS.some(domain =>
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
     console.log('[Favorite Check]', {
@@ -934,15 +977,15 @@ function mergePresetWithDefaults(presets: PresetIntegration[]): PresetIntegratio
 export function getPresetActions(presets: PresetIntegration[], url: string): PresetIntegration[] {
   // 先合并默认配置，确保 name 和 icon 字段存在
   const merged = mergePresetWithDefaults(presets);
-  
+
   return merged.filter(preset => {
     if (!preset.enabled || !preset.apiUrl) return false;
-    
+
     // Hentai Assistant 需要检查域名匹配
     if (preset.id === 'hentai-assistant') {
       return isHentaiAssistantCompatible(url);
     }
-    
+
     return false;
   });
 }
@@ -957,12 +1000,12 @@ export async function executePresetAction(
       // Hentai Assistant: 向 {API_URL}/api/download?url={url} 推送
       const apiUrl = preset.apiUrl?.replace(/\/$/, '') || '';
       const downloadUrl = `${apiUrl}/api/download?url=${encodeURIComponent(variables.url)}`;
-      
+
       const response = await fetch(downloadUrl, {
         method: 'GET',
         mode: 'cors',
       });
-      
+
       // 尝试解析响应
       let responseData: unknown = null;
       try {
@@ -975,18 +1018,18 @@ export async function executePresetAction(
       } catch {
         // 忽略响应解析错误
       }
-      
+
       if (response.ok) {
         return { success: true, response: responseData };
       } else {
-        return { 
-          success: false, 
+        return {
+          success: false,
           message: `HTTP ${response.status}: ${response.statusText}`,
-          response: responseData 
+          response: responseData
         };
       }
     }
-    
+
     return { success: false, message: '未知的预设集成类型' };
   } catch (error) {
     console.error('Preset action execution failed:', error);
@@ -1013,7 +1056,7 @@ const templateFilters: Record<string, (value: string, ...args: string[]) => stri
       return value;
     }
   },
-  
+
   // 正则替换
   replace: (value: string, pattern: string, replacement: string = '') => {
     try {
@@ -1023,47 +1066,47 @@ const templateFilters: Record<string, (value: string, ...args: string[]) => stri
       return value;
     }
   },
-  
+
   // 截取前 N 个字符
   truncate: (value: string, length: string, suffix: string = '...') => {
     const len = parseInt(length, 10);
     if (value.length <= len) return value;
     return value.slice(0, len) + suffix;
   },
-  
+
   // 转小写
   lower: (value: string) => value.toLowerCase(),
-  
+
   // 转大写
   upper: (value: string) => value.toUpperCase(),
-  
+
   // 去除首尾空白
   trim: (value: string) => value.trim(),
-  
+
   // URL 编码
   urlencode: (value: string) => encodeURIComponent(value),
-  
+
   // 不编码（原样输出）
   raw: (value: string) => value,
-  
+
   // 提取第一个匹配的数字
   number: (value: string) => {
     const match = value.match(/\d+/);
     return match ? match[0] : '';
   },
-  
+
   // 分割后取指定索引
   split: (value: string, separator: string, index: string = '0') => {
     const parts = value.split(separator);
     const idx = parseInt(index, 10);
     return parts[idx] ?? value;
   },
-  
+
   // 默认值（当值为空时使用）
   default: (value: string, defaultValue: string) => {
     return value || defaultValue;
   },
-  
+
   // Base64 编码
   base64: (value: string) => {
     try {
@@ -1072,7 +1115,7 @@ const templateFilters: Record<string, (value: string, ...args: string[]) => stri
       return value;
     }
   },
-  
+
   // JSON 字符串转义（用于嵌入 JSON）
   json: (value: string) => {
     return JSON.stringify(value).slice(1, -1); // 去掉首尾引号
@@ -1088,23 +1131,23 @@ function parseFilter(filterStr: string): { name: string; args: string[] } {
   if (!match) {
     return { name: filterStr.trim(), args: [] };
   }
-  
+
   const name = match[1];
   const argsStr = match[2];
-  
+
   if (!argsStr) {
     return { name, args: [] };
   }
-  
+
   // 解析参数，支持引号内的逗号
   const args: string[] = [];
   let current = '';
   let inQuote = false;
   let quoteChar = '';
-  
+
   for (let i = 0; i < argsStr.length; i++) {
     const char = argsStr[i];
-    
+
     if (!inQuote && (char === '"' || char === "'")) {
       inQuote = true;
       quoteChar = char;
@@ -1118,17 +1161,17 @@ function parseFilter(filterStr: string): { name: string; args: string[] } {
       current += char;
     }
   }
-  
+
   if (current.trim()) {
     args.push(current.trim());
   }
-  
+
   // 去除参数的引号
   return {
     name,
     args: args.map(arg => {
-      if ((arg.startsWith('"') && arg.endsWith('"')) || 
-          (arg.startsWith("'") && arg.endsWith("'"))) {
+      if ((arg.startsWith('"') && arg.endsWith('"')) ||
+        (arg.startsWith("'") && arg.endsWith("'"))) {
         return arg.slice(1, -1);
       }
       return arg;
@@ -1148,15 +1191,15 @@ function processTemplate(template: string, variables: Record<string, string>, au
   // 处理 {{ variable }} 或 {{ variable | filter1 | filter2 }} 语法
   return template.replace(/\{\{\s*(\w+)((?:\s*\|\s*[^}]+)*)\s*\}\}/g, (_, varName, filterChain) => {
     let value = variables[varName] ?? '';
-    
+
     if (filterChain && filterChain.trim()) {
       // 解析过滤器链
       const filters = filterChain.split('|').slice(1).map((f: string) => f.trim());
-      
+
       for (const filterStr of filters) {
         const { name, args } = parseFilter(filterStr);
         const filterFn = templateFilters[name];
-        
+
         if (filterFn) {
           value = filterFn(value, ...args);
         }
@@ -1165,7 +1208,7 @@ function processTemplate(template: string, variables: Record<string, string>, au
       // 简单变量且需要自动编码
       value = encodeURIComponent(value);
     }
-    
+
     return value;
   });
 }
@@ -1184,22 +1227,22 @@ export async function executeIntegration(
     } else if (integration.type === 'webhook') {
       // Webhook URL - 简单变量自动 URL 编码
       const url = processTemplate(integration.webhookUrl || '', variables, true);
-      
+
       let response: Response;
-      
+
       if (integration.webhookMethod === 'GET') {
         response = await fetch(url, { method: 'GET' });
       } else {
         // POST 请求体 - 简单变量不自动编码（JSON 中通常不需要）
         const body = processTemplate(integration.webhookBody || '{}', variables, false);
-        
+
         response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body,
         });
       }
-      
+
       // 尝试解析响应
       let responseData: unknown = null;
       try {
@@ -1212,14 +1255,14 @@ export async function executeIntegration(
       } catch {
         // 忽略响应解析错误
       }
-      
+
       if (response.ok) {
         return { success: true, response: responseData };
       } else {
-        return { 
-          success: false, 
+        return {
+          success: false,
           message: `HTTP ${response.status}: ${response.statusText}`,
-          response: responseData 
+          response: responseData
         };
       }
     }

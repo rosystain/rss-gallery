@@ -466,6 +466,14 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                             <span className="truncate max-w-[200px] sm:max-w-[300px]">{item.feed.title}</span>
                           </div>
                         )}
+                        {item.komgaStatus === 1 && (
+                          <div className="flex items-center gap-1 text-green-600 dark:text-green-400 shrink-0">
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>已在 Komga 库中</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Right side: Share & Actions Toolbar */}

@@ -22,7 +22,7 @@ export const api = {
     const payload: Record<string, unknown> = { url };
     if (category !== undefined) payload.category = category;
     if (enabledIntegrations !== undefined) payload.enabled_integrations = enabledIntegrations;
-    
+
     const response = await fetch(`${API_BASE}/feeds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,7 +48,7 @@ export const api = {
     if (data.url !== undefined) payload.url = data.url;
     if (data.category !== undefined) payload.category = data.category;
     if (data.enabledIntegrations !== undefined) payload.enabled_integrations = data.enabledIntegrations;
-    
+
     const response = await fetch(`${API_BASE}/feeds/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -65,7 +65,7 @@ export const api = {
   },
 
   async markFeedAsRead(id: string, latestItemTime?: string): Promise<{ success: boolean; lastViewedAt: string }> {
-    const url = latestItemTime 
+    const url = latestItemTime
       ? `${API_BASE}/feeds/${id}/mark-read?latest_item_time=${encodeURIComponent(latestItemTime)}`
       : `${API_BASE}/feeds/${id}/mark-read`;
     const response = await fetch(url, {
@@ -251,5 +251,23 @@ export const api = {
       body: JSON.stringify({ url, favcat, note: note || '' }),
     });
     return handleResponse<{ success: boolean; message?: string }>(response);
+  },
+
+  // Komga 查询
+  async queryKomgaStatus(itemIds: string[]): Promise<{
+    success: boolean;
+    updated: number;
+    items?: Array<{
+      id: string;
+      komgaStatus: number;
+      komgaSyncAt: string | null;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE}/items/query-komga`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itemIds),
+    });
+    return handleResponse(response);
   },
 };

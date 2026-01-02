@@ -34,6 +34,8 @@ export interface FeedItem {
   updatedAt: string;
   isUnread?: boolean;
   isFavorite?: boolean;
+  komgaStatus?: number;  // Komga 库存状态: 0=未检查, 1=已收录, 2=不在库
+  komgaSyncAt?: string;  // 上次调用 Komga API 的时间
   feed?: {
     title: string;
     category?: string;
@@ -55,7 +57,7 @@ export type IntegrationType = 'url' | 'webhook';
 export type WebhookMethod = 'GET' | 'POST';
 
 // 可选图标列表
-export type IntegrationIcon = 
+export type IntegrationIcon =
   | 'link'        // 链接
   | 'globe'       // 地球
   | 'bookmark'    // 书签
@@ -89,7 +91,7 @@ export interface PresetIntegration {
   name?: string;  // 可选，用于从默认配置获取
   icon?: string;  // 可选，用于从默认配置获取
   enabled: boolean;
-  config?: Record<string, string>;
+  config?: Record<string, any>;  // 修改为 any 以支持 boolean 等类型
   apiUrl?: string;  // API 基础 URL（用于私人集成）
   // 收藏夹相关配置
   defaultFavcat?: string;  // 默认收藏夹 ID

@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
-import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible } from './IntegrationSettings';
+import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible, isHentaiAssistantCompatible } from './IntegrationSettings';
 
 // 悬浮标记已读的延迟时间（毫秒）
 const HOVER_READ_DELAY = 1500;
@@ -207,6 +207,11 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
 
+  // Komga 查询相关状态
+  const [queryingKomgaIds, setQueryingKomgaIds] = useState<Set<string>>(new Set()); // 正在查询或已查询的 item IDs
+  const komgaQueryTimerRef = useRef<NodeJS.Timeout | null>(null); // Komga 查询防抖定时器
+  const [isQueryingKomga, setIsQueryingKomga] = useState(false); // 是否正在查询 Komga
+
   // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
@@ -385,8 +390,123 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     return () => {
       hoverTimerRef.current.forEach(timer => clearTimeout(timer));
       hoverTimerRef.current.clear();
+      if (komgaQueryTimerRef.current) {
+        clearTimeout(komgaQueryTimerRef.current);
+      }
     };
   }, []);
+
+  // Komga 查询：收集需要查询的条目
+  const collectItemsToQueryKomga = useCallback((): string[] => {
+    const itemsToQuery: string[] = [];
+    const debugInfo = { total: 0, needsQuery: 0, compatible: 0, inViewport: 0 };
+
+    // 遍历所有条目，找出需要查询的
+    items.forEach(item => {
+      debugInfo.total++;
+
+      // 查询 komgaStatus = 0/null（未检查）或 2（不在库）的记录，且 URL 属于支持的域名
+      if ((!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2) &&
+        !queryingKomgaIds.has(item.id) &&
+        isHentaiAssistantCompatible(item.link)) {
+        // 检查是否在视口内或附近
+        const element = document.querySelector(`[data-item-id="${item.id}"]`);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const windowHeight = window.innerHeight;
+          // 视口内 + 下方 2 屏的范围
+          if (rect.top < windowHeight * 3) {
+            debugInfo.inViewport++;
+            itemsToQuery.push(item.id);
+          }
+        }
+      }
+    });
+
+    if (debugInfo.total === 0) {
+      return [];
+    }
+
+    // 最多查询 50 个
+    const result = itemsToQuery.slice(0, 50);
+    return result;
+  }, [items, queryingKomgaIds]);
+
+  // Komga 查询：执行批量查询
+  const batchQueryKomga = useCallback(async (itemIds: string[]) => {
+    if (itemIds.length === 0 || isQueryingKomga) return;
+
+    console.log(`Querying Komga status for ${itemIds.length} items...`);
+    setIsQueryingKomga(true);
+
+    // 标记这些 ID 为正在查询
+    setQueryingKomgaIds(prev => {
+      const newSet = new Set(prev);
+      itemIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+
+    try {
+      const result = await api.queryKomgaStatus(itemIds);
+      console.log(`Komga query completed: ${result.updated} items updated`);
+
+      // 直接使用后端返回的更新数据
+      if (result.items && result.items.length > 0 && onItemUpdated) {
+        result.items.forEach((item: any) => {
+          onItemUpdated(item.id, {
+            komgaStatus: item.komgaStatus,
+            komgaSyncAt: item.komgaSyncAt
+          });
+        });
+
+        console.log(`[Komga] Updated ${result.items.length} items in local state`);
+      }
+    } catch (error) {
+      console.error('Failed to query Komga status:', error);
+      // 查询失败，移除这些 ID 的标记，允许下次重试
+      setQueryingKomgaIds(prev => {
+        const newSet = new Set(prev);
+        itemIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    } finally {
+      setIsQueryingKomga(false);
+    }
+  }, [isQueryingKomga, onItemUpdated]);
+
+  // Komga 查询：滚动停止后触发
+  const handleScrollForKomga = useCallback(() => {
+    // 清除之前的定时器
+    if (komgaQueryTimerRef.current) {
+      clearTimeout(komgaQueryTimerRef.current);
+    }
+
+    // 500ms 后触发查询
+    komgaQueryTimerRef.current = setTimeout(() => {
+      const itemsToQuery = collectItemsToQueryKomga();
+      if (itemsToQuery.length > 0) {
+        batchQueryKomga(itemsToQuery);
+      }
+    }, 500);
+  }, [collectItemsToQueryKomga, batchQueryKomga]);
+
+  // 监听滚动事件，触发 Komga 查询
+  useEffect(() => {
+    window.addEventListener('scroll', handleScrollForKomga, { passive: true });
+
+    // 组件挂载时立即查询一次（首屏内容）
+    const initialTimer = setTimeout(() => {
+      const itemsToQuery = collectItemsToQueryKomga();
+      if (itemsToQuery.length > 0) {
+        batchQueryKomga(itemsToQuery);
+      }
+    }, 1000); // 延迟 1 秒，等待组件完全渲染
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollForKomga);
+      clearTimeout(initialTimer);
+    };
+  }, [handleScrollForKomga, collectItemsToQueryKomga, batchQueryKomga]);
 
   // 处理分享（复制链接）
   const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {
@@ -809,6 +929,18 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
             {/* Image */}
             <div className="relative bg-gray-200 dark:bg-neutral-700 overflow-hidden">
               <ImageCard item={item} onRetry={handleImageRetry} />
+
+              {/* Komga 收录标记 */}
+              {item.komgaStatus === 1 && (
+                <div
+                  className="absolute top-2 right-2 p-1.5 bg-green-500/90 rounded-lg shadow-lg backdrop-blur-sm"
+                  title="已在 Komga 库中"
+                >
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                </div>
+              )}
 
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />

@@ -187,38 +187,6 @@ function App() {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
-  // 禁用 Safari 原生下拉刷新
-  useEffect(() => {
-    const container = pageContainerRef.current;
-    const mainContent = mainContentRef.current;
-    if (!container || !mainContent) return;
-
-    let touchStartY = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touchY = e.touches[0].clientY;
-      const touchDelta = touchY - touchStartY;
-      
-      // 只在页面顶部且向下拉时阻止默认行为
-      if (mainContent.scrollTop === 0 && touchDelta > 0) {
-        e.preventDefault();
-      }
-    };
-
-    // passive: false 允许调用 preventDefault
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, []);
-
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!compactFeedListRef.current) return;
@@ -328,7 +296,7 @@ function App() {
     const mainContent = mainContentRef.current;
     if (!mainContent) return;
 
-    // 只在页面顶部时允许下拉（检查 mainContent 的滚动位置）
+    // 只在页面顶部时允许下拉
     if (mainContent.scrollTop <= 0) {
       pullStartYRef.current = e.touches[0].clientY;
       setIsPulling(true);
@@ -338,14 +306,25 @@ function App() {
   const handlePullMove = (e: React.TouchEvent) => {
     if (!isPulling || isRefreshing) return;
 
+    const mainContent = mainContentRef.current;
+    if (!mainContent) return;
+
     const currentY = e.touches[0].clientY;
     const distance = currentY - pullStartYRef.current;
 
-    // 只允许向下拉
-    if (distance > 0) {
+    // 如果向上滑动超过 10px，取消下拉状态
+    if (distance < -10) {
+      setIsPulling(false);
+      setPullDistance(0);
+      return;
+    }
+
+    // 只有在顶部且向下拉时才显示下拉动画
+    if (mainContent.scrollTop <= 0 && distance > 0) {
       // 阻尼效果：距离越大阻力越大，最大可拉到 150px
       const dampedDistance = Math.min(distance * 0.5, 150);
       setPullDistance(dampedDistance);
+    } else if (mainContent.scrollTop > 0 || distance <= 0
     }
   };
 

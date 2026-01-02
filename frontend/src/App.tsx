@@ -324,7 +324,10 @@ function App() {
       // 阻尼效果：距离越大阻力越大，最大可拉到 150px
       const dampedDistance = Math.min(distance * 0.5, 150);
       setPullDistance(dampedDistance);
-    } else if (mainContent.scrollTop > 0 || distance <= 0
+    } else if (mainContent.scrollTop > 0 || distance <= 0) {
+      // 如果页面已经开始滚动或向上滑动，立即取消下拉
+      setIsPulling(false);
+      setPullDistance(0);
     }
   };
 

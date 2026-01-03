@@ -291,7 +291,7 @@ function App() {
   // 自定义下拉刷新处理
   const handlePullStart = (e: React.TouchEvent) => {
     if (isRefreshing) return;
-    
+
     const mainContent = mainContentRef.current;
     if (!mainContent) return;
 
@@ -338,14 +338,14 @@ function App() {
     // 如果下拉距离超过70px，触发刷新
     if (pullDistance > 70 && !isRefreshing) {
       setIsRefreshing(true);
-      
+
       // 立即回弹
       setPullDistance(0);
 
       // 调用软刷新（只更新数据，不重载页面）
       setPage(1);
       triggerRefresh(false); // 明确传入 false，避免重复设置动画
-      
+
       // 短暂延迟后停止旋转，保持流畅
       setTimeout(() => {
         setIsRefreshing(false);
@@ -641,7 +641,7 @@ function App() {
 
   const triggerRefresh = (isManualClick = false) => {
     setRefreshKey(prev => prev + 1);
-    
+
     // 如果是手动点击，设置刷新状态并保持一段时间
     if (isManualClick && !isRefreshing) {
       setIsRefreshing(true);
@@ -852,7 +852,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative overflow-hidden">
+      {/* Background Fill Layer - Prevents iOS PWA background bleed on over-scroll */}
+      <div
+        className="fixed inset-0 -top-[200px] bg-gray-50 dark:bg-dark-bg pointer-events-none"
+        style={{ zIndex: -1 }}
+      />
       {/* Top Header Bar - Fixed */}
       <header className="fixed top-0 left-0 right-0 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3 z-50">
         <div className="flex items-center justify-between gap-4">
@@ -1009,10 +1014,10 @@ function App() {
               title="刷新"
               disabled={isRefreshing || (isPulling && pullDistance > 0)}
             >
-              <svg 
-                className={`w-5 h-5 transition-transform duration-200 ${isPulling && pullDistance > 0 || isRefreshing ? 'animate-spin' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-5 h-5 transition-transform duration-200 ${isRefreshing ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1278,11 +1283,11 @@ function App() {
         {!sidebarCollapsed && (
           <aside
             className="bg-white dark:bg-dark-card flex flex-col overflow-y-auto select-none z-40 rounded-lg shadow-xl border border-gray-200 dark:border-dark-border fixed"
-            style={{ 
-              width: `${sidebarWidth}px`, 
-              left: '12px', 
-              top: '73px', 
-              bottom: '12px', 
+            style={{
+              width: `${sidebarWidth}px`,
+              left: '12px',
+              top: '73px',
+              bottom: '12px',
               userSelect: 'none'
             }}
             onClick={handleSidebarClick}
@@ -1679,6 +1684,37 @@ function App() {
             </div>
           )}
 
+          {/* Pull to Refresh Indicator - Fixed position outside main */}
+          {isPulling && pullDistance > 0 && (
+            <div
+              className="fixed left-0 right-0 flex items-center justify-center pointer-events-none z-10"
+              style={{
+                // 基准位置 + 下拉距离
+                // sidebarCollapsed ? 128 (header 61 + tab bar 67) : 61 (header only)
+                // 不额外偏移,让文字自然居中在下拉出现的空白区域
+                top: `${(sidebarCollapsed ? 128 : 61) + pullDistance}px`,
+                opacity: Math.min(pullDistance / 40, 1),
+                transition: 'opacity 0.2s ease-out'
+              }}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className="text-gray-500 dark:text-dark-text-secondary transition-transform duration-200"
+                  style={{
+                    transform: pullDistance > 70 ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-gray-600 dark:text-dark-text-secondary">
+                  {pullDistance > 70 ? '松开刷新' : '下拉刷新'}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Gallery Content */}
           <main
             ref={mainContentRef}
@@ -1691,6 +1727,7 @@ function App() {
               transition: isPulling ? 'none' : 'transform 0.3s ease-out'
             }}
           >
+
             {items.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

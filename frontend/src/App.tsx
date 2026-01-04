@@ -184,6 +184,7 @@ function App() {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pullStartYRef = useRef(0);
+  const allowPullRef = useRef(false); // 追踪是否允许下拉（必须在触摸开始时就在顶部）
   const mainContentRef = useRef<HTMLDivElement>(null);
 
 
@@ -295,15 +296,20 @@ function App() {
     const mainContent = mainContentRef.current;
     if (!mainContent) return;
 
-    // 只在页面顶部时允许下拉
-    if (mainContent.scrollTop <= 0) {
+    // 只在页面顶部时允许下拉（使用 window.scrollY 而不是 element.scrollTop，
+    // 因为实际滚动发生在 window 层级，而不是 main 元素）
+    const isAtTop = window.scrollY === 0;
+    allowPullRef.current = isAtTop;
+    
+    if (isAtTop) {
       pullStartYRef.current = e.touches[0].clientY;
       setIsPulling(true);
     }
   };
 
   const handlePullMove = (e: React.TouchEvent) => {
-    if (!isPulling || isRefreshing) return;
+    // 如果在触摸开始时不在顶部，直接忽略所有移动事件
+    if (!allowPullRef.current || !isPulling || isRefreshing) return;
 
     const mainContent = mainContentRef.current;
     if (!mainContent) return;
@@ -315,18 +321,22 @@ function App() {
     if (distance < -10) {
       setIsPulling(false);
       setPullDistance(0);
+      allowPullRef.current = false;
       return;
     }
 
-    // 只有在顶部且向下拉时才显示下拉动画
-    if (mainContent.scrollTop <= 0 && distance > 0) {
+    // 只有在仍然在顶部且向下拉时才显示下拉动画
+    const isStillAtTop = window.scrollY === 0;
+    
+    if (isStillAtTop && distance > 0) {
       // 阻尼效果：距离越大阻力越大，最大可拉到 150px
       const dampedDistance = Math.min(distance * 0.5, 150);
       setPullDistance(dampedDistance);
-    } else if (mainContent.scrollTop > 0 || distance <= 0) {
+    } else if (!isStillAtTop || distance <= 0) {
       // 如果页面已经开始滚动或向上滑动，立即取消下拉
       setIsPulling(false);
       setPullDistance(0);
+      allowPullRef.current = false;
     }
   };
 

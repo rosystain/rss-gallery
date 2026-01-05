@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
@@ -263,9 +263,6 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     return getPresetActions(presetIntegrations, item.link);
   }, [presetIntegrations]);
 
-  // 生成稳定的 items ID 列表
-  const itemIds = useMemo(() => items.map(item => item.id).join(','), [items]);
-
   // 同步外部 viewedItems
   useEffect(() => {
     if (viewedItems) {
@@ -277,7 +274,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   useEffect(() => {
     if (!onItemViewed) return;
 
-    // 初始化保护期：500ms 内不检查
+    // 初始化保护期:500ms 内不检查
     let isInitializing = true;
     const initTimer = setTimeout(() => {
       isInitializing = false;
@@ -287,9 +284,9 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     const checkViewedItems = () => {
       if (isInitializing) return;
 
-      // 获取当前滚动位置（视口顶部相对于文档的位置）
+      // 获取当前滚动位置(视口顶部相对于文档的位置)
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      // 水位线：视口顶部位置 + 一点缓冲（用户至少看过视口高度的 20%）
+      // 水位线:视口顶部位置 + 一点缓冲(用户至少看过视口高度的 20%)
       const waterline = scrollTop + window.innerHeight * 0.2;
 
       // 检查所有卡片
@@ -301,18 +298,18 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         // 已经标记过的跳过
         if (viewedItemsRef.current.has(itemId)) return;
 
-        // 获取卡片位置（相对于文档）
+        // 获取卡片位置(相对于文档)
         const rect = card.getBoundingClientRect();
         const cardBottom = rect.bottom + scrollTop; // 卡片底部相对于文档的位置
 
-        // 如果卡片底部在水位线之上，说明用户已经滚过这张卡片
+        // 如果卡片底部在水位线之上,说明用户已经滚过这张卡片
         if (cardBottom < waterline) {
           onItemViewed(itemId);
         }
       });
     };
 
-    // 使用 throttle 的滚动监听（每 200ms 最多执行一次）
+    // 使用 throttle 的滚动监听(每 200ms 最多执行一次)
     let lastCheck = 0;
     const throttledCheck = () => {
       const now = Date.now();
@@ -325,7 +322,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     // 监听滚动事件
     window.addEventListener('scroll', throttledCheck, { passive: true });
 
-    // 组件挂载后也检查一次（处理页面已经滚动的情况）
+    // 组件挂载后也检查一次(处理页面已经滚动的情况)
     const mountCheck = setTimeout(() => {
       checkViewedItems();
     }, 600); // 等初始化保护期结束后再检查
@@ -335,7 +332,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       clearTimeout(mountCheck);
       window.removeEventListener('scroll', throttledCheck);
     };
-  }, [itemIds, onItemViewed]);
+  }, [onItemViewed]); // 移除 itemIds 依赖,避免频繁重新注册监听器
 
   // 处理图片重试
   const handleImageRetry = useCallback(async (itemId: string): Promise<string | null> => {
@@ -524,7 +521,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       clearTimeout(initialTimer);
       window.removeEventListener('scroll', handleScrollForKomga);
     };
-  }, [collectItemsToQueryKomga, batchQueryKomga, handleScrollForKomga]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在组件挂载时执行一次
 
   // 处理分享（复制链接）
   const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {

@@ -32,6 +32,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
   const [addingToFavorite, setAddingToFavorite] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const queriedKomgaIdsRef = useRef<Set<string>>(new Set()); // 追踪已查询过的项目 ID
 
   // 处理图片尺寸：给大图片添加全宽样式，小图片保持默认
   useEffect(() => {
@@ -127,6 +128,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       setIsDragging(false);
       dragStartY.current = 0;
       dragStartScrollTop.current = 0;
+      // 清空已查询记录,允许下次打开时重新查询
+      queriedKomgaIdsRef.current.clear();
     }
   }, [isOpen]);
 
@@ -146,13 +149,15 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     }
   }, [isOpen, loadIntegrations, refreshIntegrationsTrigger]);
 
-  // 自动查询 Komga 状态（如果需要）
+  // 自动查询 Komga 状态(如果需要)
   useEffect(() => {
     if (!isOpen || !item || !onItemUpdated) return;
 
     // 检查是否需要查询 Komga 状态
+    // 查询条件:状态未知(undefined/0)或不在库中(2),且未查询过,且 URL 属于支持的域名
     const needsQuery =
       (!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2) &&
+      !queriedKomgaIdsRef.current.has(item.id) &&
       item.link &&
       (item.link.includes('e-hentai.org') ||
         item.link.includes('exhentai.org') ||
@@ -160,7 +165,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
         item.link.includes('hdoujin.org'));
 
     if (needsQuery) {
-      // 延迟查询，避免阻塞 UI
+      // 延迟查询,避免阻塞 UI
       const timer = setTimeout(async () => {
         try {
           // 检查 Hentai Assistant 是否启用
@@ -173,6 +178,10 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
           }
 
           console.log(`[ItemModal] Querying Komga status for item: ${item.id}`);
+
+          // 标记为已查询,防止重复查询
+          queriedKomgaIdsRef.current.add(item.id);
+
           const result = await api.queryKomgaStatus([item.id]);
 
           if (result.items && result.items.length > 0) {
@@ -185,6 +194,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
           }
         } catch (error) {
           console.error('[ItemModal] Failed to query Komga status:', error);
+          // 查询失败时移除标记,允许下次重试
+          queriedKomgaIdsRef.current.delete(item.id);
         }
       }, 500);
 

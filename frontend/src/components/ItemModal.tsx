@@ -34,6 +34,14 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
   const contentRef = useRef<HTMLDivElement>(null);
   const queriedKomgaIdsRef = useRef<Set<string>>(new Set()); // 追踪已查询过的项目 ID
 
+  // Toast 通知状态
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null);
+  const [toastExpanded, setToastExpanded] = useState(false);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [presetResult, setPresetResult] = useState<{ id: string; status: 'success' | 'error' } | null>(null); // 预设集成执行结果
+  const [favoriteResult, setFavoriteResult] = useState<boolean | null>(null); // 收藏夹执行结果 (true=成功, false=失败)
+  const resultTimerRef = useRef<NodeJS.Timeout | null>(null); // 结果显示定时器
+
   // 处理图片尺寸：给大图片添加全宽样式，小图片保持默认
   useEffect(() => {
     const contentEl = contentRef.current;
@@ -332,6 +340,12 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
 
     setExecutingPreset(preset.id);
 
+    // 清除之前的结果显示定时器
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = null;
+    }
+
     try {
       const result = await executePresetAction(preset, {
         url: item.link || '',
@@ -354,6 +368,17 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       };
 
       onAddExecutionHistory?.(historyEntry);
+
+      // 设置按钮结果状态
+      setPresetResult({
+        id: preset.id,
+        status: result.success ? 'success' : 'error'
+      });
+
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setPresetResult(null);
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       const historyEntry = {
@@ -366,11 +391,22 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       };
 
       onAddExecutionHistory?.(historyEntry);
+
+      // 设置按钮错误状态
+      setPresetResult({
+        id: preset.id,
+        status: 'error'
+      });
+
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setPresetResult(null);
+      }, 2000);
     }
 
     setTimeout(() => {
       setExecutingPreset(null);
-    }, 1000);
+    }, 500);
   }, [item, onAddExecutionHistory]);
 
   // 处理添加到收藏夹
@@ -383,6 +419,12 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     }
 
     setAddingToFavorite(true);
+
+    // 清除之前的结果显示定时器
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = null;
+    }
 
     try {
       const result = await api.addToHentaiAssistantFavorite(
@@ -402,6 +444,14 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       };
 
       onAddExecutionHistory?.(historyEntry);
+
+      // 设置按钮结果状态
+      setFavoriteResult(result.success);
+
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setFavoriteResult(null);
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       const historyEntry = {
@@ -414,12 +464,48 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       };
 
       onAddExecutionHistory?.(historyEntry);
+
+      // 设置按钮错误状态
+      setFavoriteResult(false);
+
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setFavoriteResult(null);
+      }, 2000);
     }
 
     setTimeout(() => {
       setAddingToFavorite(false);
-    }, 1000);
+    }, 500);
   }, [item, onAddExecutionHistory]);
+
+  // 展开 Toast 时停止自动关闭
+  const handleExpandToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToastExpanded(true);
+  }, []);
+
+  // 关闭 Toast
+  const handleCloseToast = useCallback(() => {
+    setToast(null);
+    setToastExpanded(false);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+  }, []);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!item) return null;
 
@@ -462,6 +548,86 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                 onTouchMove={handlePanelTouchMove}
                 onTouchEnd={handlePanelTouchEnd}
               >
+                {/* Toast 通知 */}
+                {toast && (
+                  <div className="absolute top-4 left-4 right-16 z-20 max-w-md">
+                    <div className={`rounded-lg shadow-lg overflow-hidden ${toast.type === 'success'
+                      ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+                      }`}>
+                      {/* 折叠状态 */}
+                      <div className="flex items-center gap-3 p-3">
+                        {toast.type === 'success' ? (
+                          <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                        <span className={`text-sm font-medium flex-1 ${toast.type === 'success'
+                          ? 'text-green-800 dark:text-green-200'
+                          : 'text-red-800 dark:text-red-200'
+                          }`}>
+                          {toast.message}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {toast.detail && !toastExpanded && (
+                            <button
+                              onClick={handleExpandToast}
+                              className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                }`}
+                              title="查看详情"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          {toastExpanded && (
+                            <button
+                              onClick={() => setToastExpanded(false)}
+                              className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                }`}
+                              title="收起"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={handleCloseToast}
+                            className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 ${toast.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                              }`}
+                            title="关闭"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 展开的详情 */}
+                      {toastExpanded && toast.detail && (
+                        <div className={`border-t px-3 pb-3 ${toast.type === 'success'
+                          ? 'border-green-200 dark:border-green-800'
+                          : 'border-red-200 dark:border-red-800'
+                          }`}>
+                          <pre className={`mt-2 text-xs overflow-auto max-h-48 p-2 rounded whitespace-pre-wrap break-all ${toast.type === 'success'
+                            ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+                            : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                            }`}>
+                            {toast.detail}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Close Button */}
                 <button
                   onClick={onClose}
@@ -551,6 +717,16 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
+                              ) : presetResult?.id === preset.id ? (
+                                presetResult.status === 'success' ? (
+                                  <svg className="w-5 h-5 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-5 h-5 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                )
                               ) : preset.icon === 'hentai-assistant' ? (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -574,6 +750,16 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
+                                ) : favoriteResult !== null ? (
+                                  favoriteResult ? (
+                                    <svg className="w-5 h-5 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-5 h-5 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  )
                                 ) : (
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />

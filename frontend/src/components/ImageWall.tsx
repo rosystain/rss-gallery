@@ -206,6 +206,9 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null); // Toast 通知
   const [toastExpanded, setToastExpanded] = useState(false); // Toast 是否展开
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null); // Toast 自动关闭定时器
+  const [presetResult, setPresetResult] = useState<{ id: string; status: 'success' | 'error' } | null>(null); // 预设集成执行结果
+  const [favoriteResult, setFavoriteResult] = useState<{ id: string; status: 'success' | 'error' } | null>(null); // 收藏夹执行结果
+  const resultTimerRef = useRef<NodeJS.Timeout | null>(null); // 结果显示定时器
 
   // Komga 查询相关状态
   const [queryingKomgaIds, setQueryingKomgaIds] = useState<Set<string>>(new Set()); // 正在查询或已查询的 item IDs
@@ -664,10 +667,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
     setExecutingPreset(preset.id);
 
-    // 清除现有的 toast 定时器
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
+    // 清除之前的结果显示定时器
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = null;
     }
 
     try {
@@ -693,18 +696,16 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
       onAddExecutionHistory?.(historyEntry);
 
-      setToast({
-        type: historyEntry.type,
-        message: historyEntry.message,
-        detail: historyEntry.detail
+      // 设置按钮结果状态
+      setPresetResult({
+        id: preset.id,
+        status: result.success ? 'success' : 'error'
       });
-      setToastExpanded(false);
 
-      toastTimerRef.current = setTimeout(() => {
-        if (!toastExpanded) {
-          setToast(null);
-        }
-      }, 5000);
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setPresetResult(null);
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       const historyEntry = {
@@ -718,24 +719,22 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
       onAddExecutionHistory?.(historyEntry);
 
-      setToast({
-        type: 'error',
-        message: historyEntry.message,
-        detail: errorMessage
+      // 设置按钮错误状态
+      setPresetResult({
+        id: preset.id,
+        status: 'error'
       });
-      setToastExpanded(false);
 
-      toastTimerRef.current = setTimeout(() => {
-        if (!toastExpanded) {
-          setToast(null);
-        }
-      }, 5000);
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setPresetResult(null);
+      }, 2000);
     }
 
     setTimeout(() => {
       setExecutingPreset(null);
     }, 500);
-  }, [toastExpanded, onAddExecutionHistory]);
+  }, [onAddExecutionHistory]);
 
   // 处理添加到收藏夹
   const handleAddToFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem, preset: PresetIntegration) => {
@@ -748,10 +747,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
     setAddingToFavorite(item.id);
 
-    // 清除现有的 toast 定时器
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
+    // 清除之前的结果显示定时器
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = null;
     }
 
     try {
@@ -773,18 +772,16 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
       onAddExecutionHistory?.(historyEntry);
 
-      setToast({
-        type: historyEntry.type,
-        message: historyEntry.message,
-        detail: historyEntry.detail
+      // 设置按钮结果状态
+      setFavoriteResult({
+        id: item.id,
+        status: result.success ? 'success' : 'error'
       });
-      setToastExpanded(false);
 
-      toastTimerRef.current = setTimeout(() => {
-        if (!toastExpanded) {
-          setToast(null);
-        }
-      }, 5000);
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setFavoriteResult(null);
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       const historyEntry = {
@@ -798,24 +795,22 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
       onAddExecutionHistory?.(historyEntry);
 
-      setToast({
-        type: 'error',
-        message: historyEntry.message,
-        detail: errorMessage
+      // 设置按钮错误状态
+      setFavoriteResult({
+        id: item.id,
+        status: 'error'
       });
-      setToastExpanded(false);
 
-      toastTimerRef.current = setTimeout(() => {
-        if (!toastExpanded) {
-          setToast(null);
-        }
-      }, 5000);
+      // 2秒后清除结果状态
+      resultTimerRef.current = setTimeout(() => {
+        setFavoriteResult(null);
+      }, 2000);
     }
 
     setTimeout(() => {
       setAddingToFavorite(null);
     }, 500);
-  }, [toastExpanded, onAddExecutionHistory]);
+  }, [onAddExecutionHistory]);
 
   // 展开 Toast 时停止自动关闭
   const handleExpandToast = useCallback(() => {
@@ -977,6 +972,16 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
+                      ) : presetResult?.id === preset.id ? (
+                        presetResult.status === 'success' ? (
+                          <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )
                       ) : preset.icon === 'hentai-assistant' ? (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1000,6 +1005,16 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
+                        ) : favoriteResult?.id === item.id ? (
+                          favoriteResult.status === 'success' ? (
+                            <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )
                         ) : (
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />

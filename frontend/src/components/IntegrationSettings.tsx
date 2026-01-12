@@ -146,8 +146,9 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
           // 自动尝试加载收藏夹分类（消极策略：失败则静默忽略）
           const haPreset = mergedPresets.find(p => p.id === 'hentai-assistant');
           if (haPreset?.enabled && haPreset.apiUrl) {
-            api.getHentaiAssistantFavoriteCategories(haPreset.apiUrl)
-              .then(categories => setFavoriteCategories(categories))
+            const categoriesUrl = `${haPreset.apiUrl.replace(/\/$/, '')}/api/ehentai/favorites/categories`;
+            api.proxyRequest({ url: categoriesUrl })
+              .then((categories) => setFavoriteCategories(categories as { id: string; name: string }[]))
               .catch(() => {
                 // 加载失败，使用默认 0-9 编号
                 setFavoriteCategories(Array.from({ length: 10 }, (_, i) => ({ id: String(i), name: String(i) })));
@@ -255,17 +256,10 @@ export default function IntegrationSettings({ isOpen, onClose, executionHistory,
 
     setTestingApi(preset.id);
     try {
+      // 通过后端代理测试连通性
       const testUrl = `${preset.apiUrl.replace(/\/$/, '')}/api/config`;
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        mode: 'cors',
-      });
-
-      if (response.status === 200) {
-        alert('✅ API 连通性测试成功！');
-      } else {
-        alert(`❌ API 连通性测试失败\n状态码: ${response.status}\n状态文本: ${response.statusText}`);
-      }
+      await api.proxyRequest({ url: testUrl });
+      alert('✅ API 连通性测试成功！');
     } catch (error) {
       console.error('API test failed:', error);
       alert(`❌ API 连通性测试失败\n错误: ${error instanceof Error ? error.message : String(error)}`);
@@ -991,37 +985,10 @@ export async function executePresetAction(
 ): Promise<{ success: boolean; message?: string; response?: unknown }> {
   try {
     if (preset.id === 'hentai-assistant') {
-      // Hentai Assistant: 向 {API_URL}/api/download?url={url} 推送
-      const apiUrl = preset.apiUrl?.replace(/\/$/, '') || '';
-      const downloadUrl = `${apiUrl}/api/download?url=${encodeURIComponent(variables.url)}`;
-
-      const response = await fetch(downloadUrl, {
-        method: 'GET',
-        mode: 'cors',
-      });
-
-      // 尝试解析响应
-      let responseData: unknown = null;
-      try {
-        const text = await response.text();
-        try {
-          responseData = JSON.parse(text);
-        } catch {
-          responseData = text;
-        }
-      } catch {
-        // 忽略响应解析错误
-      }
-
-      if (response.ok) {
-        return { success: true, response: responseData };
-      } else {
-        return {
-          success: false,
-          message: `HTTP ${response.status}: ${response.statusText}`,
-          response: responseData
-        };
-      }
+      // Hentai Assistant: 通过后端代理推送下载
+      const downloadUrl = `${preset.apiUrl?.replace(/\/$/, '')}/api/download?url=${encodeURIComponent(variables.url)}`;
+      const result = await api.proxyRequest({ url: downloadUrl }) as { success?: boolean; message?: string };
+      return { success: result.success ?? true, message: result.message, response: result };
     }
 
     return { success: false, message: '未知的预设集成类型' };
@@ -1222,41 +1189,36 @@ export async function executeIntegration(
       // Webhook URL - 简单变量自动 URL 编码
       const url = processTemplate(integration.webhookUrl || '', variables, true);
 
-      let response: Response;
+      let result: unknown;
 
       if (integration.webhookMethod === 'GET') {
-        response = await fetch(url, { method: 'GET' });
+        // 通过后端代理发送 GET 请求
+        result = await api.proxyRequest({ url, method: 'GET' });
       } else {
         // POST 请求体 - 简单变量不自动编码（JSON 中通常不需要）
-        const body = processTemplate(integration.webhookBody || '{}', variables, false);
-
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body,
-        });
-      }
-
-      // 尝试解析响应
-      let responseData: unknown = null;
-      try {
-        const text = await response.text();
+        const bodyTemplate = processTemplate(integration.webhookBody || '{}', variables, false);
+        let body: object;
         try {
-          responseData = JSON.parse(text);
+          body = JSON.parse(bodyTemplate);
         } catch {
-          responseData = text;
+          body = { data: bodyTemplate };
         }
-      } catch {
-        // 忽略响应解析错误
+
+        // 通过后端代理发送 POST 请求
+        result = await api.proxyRequest({ url, method: 'POST', body });
       }
 
-      if (response.ok) {
-        return { success: true, response: responseData };
+      // 解析响应
+      const typedResult = result as { success?: boolean; status_code?: number; message?: string };
+      const isSuccess = typedResult.success !== false && (typedResult.status_code === undefined || typedResult.status_code < 400);
+
+      if (isSuccess) {
+        return { success: true, response: result };
       } else {
         return {
           success: false,
-          message: `HTTP ${response.status}: ${response.statusText}`,
-          response: responseData
+          message: typedResult.message || 'Request failed',
+          response: result
         };
       }
     }

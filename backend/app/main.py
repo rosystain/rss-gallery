@@ -1303,6 +1303,117 @@ def update_preset_integration(preset_id: str, update: PresetIntegrationUpdate, d
     }
 
 
+# ========== 通用 HTTP 代理 API ==========
+# 解决 HTTPS 页面无法加载 HTTP 混合内容的问题
+# 前端通过此端点间接访问外部 API（如 Hentai Assistant、自定义 Webhook）
+
+import httpx
+from pydantic import BaseModel
+from urllib.parse import urlparse
+
+class ProxyRequest(BaseModel):
+    url: str
+    method: str = "GET"  # GET | POST
+    body: Optional[dict] = None
+    headers: Optional[dict] = None
+
+
+def is_allowed_proxy_url(url: str, db: Session) -> tuple[bool, str]:
+    """
+    验证 URL 是否允许代理。
+    安全策略：只允许代理已配置的 URL。
+    
+    Returns:
+        (allowed: bool, reason: str)
+    """
+    try:
+        parsed = urlparse(url)
+        target_origin = f"{parsed.scheme}://{parsed.netloc}"
+    except:
+        return False, "Invalid URL"
+    
+    # 1. 检查 Hentai Assistant 配置的 API URL
+    ha_preset = db.query(PresetIntegration).filter(
+        PresetIntegration.id == 'hentai-assistant',
+        PresetIntegration.enabled == True
+    ).first()
+    
+    if ha_preset and ha_preset.api_url:
+        ha_origin = ha_preset.api_url.rstrip('/')
+        # 解析已配置的 URL 获取 origin
+        try:
+            parsed_ha = urlparse(ha_origin)
+            allowed_origin = f"{parsed_ha.scheme}://{parsed_ha.netloc}"
+            if target_origin == allowed_origin:
+                return True, "Allowed: Hentai Assistant API"
+        except:
+            pass
+    
+    # 2. 检查自定义集成的 Webhook URL
+    integrations = db.query(Integration).filter(
+        Integration.webhook_url.isnot(None)
+    ).all()
+    
+    for integration in integrations:
+        if integration.webhook_url:
+            try:
+                parsed_webhook = urlparse(integration.webhook_url)
+                allowed_origin = f"{parsed_webhook.scheme}://{parsed_webhook.netloc}"
+                if target_origin == allowed_origin:
+                    return True, f"Allowed: Custom integration '{integration.name}'"
+            except:
+                continue
+    
+    return False, f"URL origin '{target_origin}' is not in allowed list"
+
+
+@app.post("/api/proxy")
+async def proxy_request(request: ProxyRequest, db: Session = Depends(get_db)):
+    """
+    通用 HTTP 代理端点。
+    安全约束：只允许代理已配置的 URL（Hentai Assistant API 或自定义 Webhook）。
+    """
+    # 安全校验
+    allowed, reason = is_allowed_proxy_url(request.url, db)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=f"Proxy not allowed: {reason}")
+    
+    # 构建请求头
+    headers = request.headers or {}
+    if request.body and "Content-Type" not in headers:
+        headers["Content-Type"] = "application/json"
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if request.method.upper() == "GET":
+                response = await client.get(request.url, headers=headers)
+            elif request.method.upper() == "POST":
+                response = await client.post(
+                    request.url,
+                    json=request.body,
+                    headers=headers
+                )
+            else:
+                raise HTTPException(status_code=400, detail=f"Unsupported method: {request.method}")
+            
+            # 尝试解析 JSON 响应
+            try:
+                return response.json()
+            except:
+                # 非 JSON 响应，返回包装后的结果
+                return {
+                    "success": response.is_success,
+                    "status_code": response.status_code,
+                    "message": response.text
+                }
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Proxy request timed out")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Proxy request failed: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Proxy error: {str(e)}")
+
+
 # Serve frontend static files (only in production/Docker)
 if os.path.exists("/app/frontend/dist"):
     app.mount("/", StaticFiles(directory="/app/frontend/dist", html=True), name="frontend")

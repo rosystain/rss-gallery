@@ -234,23 +234,24 @@ export const api = {
     return handleResponse<PresetIntegration>(response);
   },
 
-  // Hentai Assistant 收藏夹相关
-  async getHentaiAssistantFavoriteCategories(apiUrl: string): Promise<{ id: string; name: string }[]> {
-    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/ehentai/favorites/categories`, {
-      method: 'GET',
-      mode: 'cors',
-    });
-    return handleResponse<{ id: string; name: string }[]>(response);
-  },
-
-  async addToHentaiAssistantFavorite(apiUrl: string, url: string, favcat: string, note?: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/ehentai/favorites/addfav`, {
+  // 通用 HTTP 代理（解决混合内容问题）
+  async proxyRequest(params: {
+    url: string;
+    method?: 'GET' | 'POST';
+    body?: object;
+    headers?: Record<string, string>;
+  }): Promise<unknown> {
+    const response = await fetch(`${API_BASE}/proxy`, {
       method: 'POST',
-      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, favcat, note: note || '' }),
+      body: JSON.stringify({
+        url: params.url,
+        method: params.method || 'GET',
+        body: params.body,
+        headers: params.headers,
+      }),
     });
-    return handleResponse<{ success: boolean; message?: string }>(response);
+    return handleResponse<unknown>(response);
   },
 
   // Komga 查询

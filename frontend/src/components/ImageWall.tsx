@@ -754,12 +754,13 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }
 
     try {
-      const result = await api.addToHentaiAssistantFavorite(
-        preset.apiUrl,
-        item.link || '',
-        preset.defaultFavcat,
-        preset.defaultNote
-      );
+      // 通过后端代理添加到收藏夹
+      const addfavUrl = `${preset.apiUrl?.replace(/\/$/, '')}/api/ehentai/favorites/addfav`;
+      const result = await api.proxyRequest({
+        url: addfavUrl,
+        method: 'POST',
+        body: { url: item.link || '', favcat: preset.defaultFavcat, note: preset.defaultNote || '' }
+      }) as { success?: boolean; message?: string };
 
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,

@@ -427,12 +427,13 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     }
 
     try {
-      const result = await api.addToHentaiAssistantFavorite(
-        preset.apiUrl,
-        item.link || '',
-        preset.defaultFavcat,
-        preset.defaultNote
-      );
+      // 通过后端代理添加到收藏夹
+      const addfavUrl = `${preset.apiUrl?.replace(/\/$/, '')}/api/ehentai/favorites/addfav`;
+      const result = await api.proxyRequest({
+        url: addfavUrl,
+        method: 'POST',
+        body: { url: item.link || '', favcat: preset.defaultFavcat, note: preset.defaultNote || '' }
+      }) as { success?: boolean; message?: string };
 
       const historyEntry = {
         id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -446,7 +447,7 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       onAddExecutionHistory?.(historyEntry);
 
       // 设置按钮结果状态
-      setFavoriteResult(result.success);
+      setFavoriteResult(result.success ?? true);
 
       // 2秒后清除结果状态
       resultTimerRef.current = setTimeout(() => {

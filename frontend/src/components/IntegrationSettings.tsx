@@ -942,18 +942,10 @@ export function isHentaiAssistantCompatible(url: string): boolean {
 export function isHentaiAssistantFavoriteCompatible(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    const isCompatible = HENTAI_ASSISTANT_FAVORITE_DOMAINS.some(domain =>
+    return HENTAI_ASSISTANT_FAVORITE_DOMAINS.some(domain =>
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
-    console.log('[Favorite Check]', {
-      url,
-      hostname: urlObj.hostname,
-      isCompatible,
-      supportedDomains: HENTAI_ASSISTANT_FAVORITE_DOMAINS
-    });
-    return isCompatible;
-  } catch (e) {
-    console.error('[Favorite Check] Invalid URL:', url, e);
+  } catch {
     return false;
   }
 }
@@ -967,6 +959,8 @@ function mergePresetWithDefaults(presets: PresetIntegration[]): PresetIntegratio
       enabled: saved?.enabled ?? defaultPreset.enabled,
       apiUrl: saved?.apiUrl ?? defaultPreset.apiUrl,
       config: saved?.config ?? defaultPreset.config,
+      defaultFavcat: saved?.defaultFavcat ?? defaultPreset.defaultFavcat,
+      defaultNote: saved?.defaultNote ?? defaultPreset.defaultNote,
       createdAt: saved?.createdAt,
       updatedAt: saved?.updatedAt,
     };

@@ -709,7 +709,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                             {/* 推送下载按钮 */}
                             <button
                               onClick={() => handleExecutePresetAction(preset)}
-                              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text"
+                              disabled={executingPreset === preset.id}
+                              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
                               title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
                             >
                               {executingPreset === preset.id ? (
@@ -742,7 +743,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                             {preset.id === 'hentai-assistant' && preset.defaultFavcat && item.link && isHentaiAssistantFavoriteCompatible(item.link) && (
                               <button
                                 onClick={() => handleAddToFavorite(preset)}
-                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text"
+                                disabled={addingToFavorite}
+                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="添加到 E-Hentai 收藏夹"
                               >
                                 {addingToFavorite ? (
@@ -775,7 +777,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                           <button
                             key={integration.id}
                             onClick={() => handleExecuteIntegration(integration)}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text"
+                            disabled={executingIntegration === integration.id}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
                             title={integration.name}
                           >
                             {executingIntegration === integration.id ? (

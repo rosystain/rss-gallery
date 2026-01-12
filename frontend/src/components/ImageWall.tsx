@@ -964,7 +964,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                     {/* 推送下载按钮 */}
                     <button
                       onClick={(e) => handleExecutePresetAction(e, item, preset)}
-                      className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                      disabled={executingPreset === preset.id}
+                      className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title={preset.id === 'hentai-assistant' ? '推送到 Hentai Assistant' : preset.name}
                     >
                       {executingPreset === preset.id ? (
@@ -997,7 +998,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                     {preset.id === 'hentai-assistant' && preset.defaultFavcat && item.link && isHentaiAssistantFavoriteCompatible(item.link) && (
                       <button
                         onClick={(e) => handleAddToFavorite(e, item, preset)}
-                        className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                        disabled={addingToFavorite === item.id}
+                        className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="添加到 E-Hentai 收藏夹"
                       >
                         {addingToFavorite === item.id ? (
@@ -1030,7 +1032,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                   <button
                     key={integration.id}
                     onClick={(e) => handleExecuteIntegration(e, item, integration)}
-                    className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    disabled={executingIntegration === integration.id}
+                    className="p-1.5 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title={integration.name}
                   >
                     {executingIntegration === integration.id ? (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Masonry from 'react-masonry-css';
 import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
-import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible, isHentaiAssistantCompatible } from './IntegrationSettings';
+import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible } from './IntegrationSettings';
 
 // 悬浮标记已读的延迟时间（毫秒）
 const HOVER_READ_DELAY = 1500;

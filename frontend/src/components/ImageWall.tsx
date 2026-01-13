@@ -405,8 +405,8 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     items.forEach(item => {
       debugInfo.total++;
 
-      // 查询 komgaStatus = 0/null（未检查）或 2（不在库）的记录，且 URL 属于支持的域名
-      if ((!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2) &&
+      // 查询 komgaStatus = 0/null（未检查）、2（不在库）或 3（下载中）的记录，且 URL 属于支持的域名
+      if ((!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2 || item.komgaStatus === 3) &&
         !queryingKomgaIds.has(item.id) &&
         isHentaiAssistantCompatible(item.link)) {
         // 检查是否在视口内或附近
@@ -702,6 +702,17 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
         status: result.success ? 'success' : 'error'
       });
 
+      // 推送成功后，更新 Komga 状态为"下载中"(3)
+      if (result.success && preset.id === 'hentai-assistant') {
+        try {
+          await api.updateItemKomgaStatus(item.id, 3);
+          // 同步更新本地状态
+          onItemUpdated?.(item.id, { komgaStatus: 3 });
+        } catch (e) {
+          console.error('[ImageWall] Failed to update Komga status:', e);
+        }
+      }
+
       // 2秒后清除结果状态
       resultTimerRef.current = setTimeout(() => {
         setPresetResult(null);
@@ -734,7 +745,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     setTimeout(() => {
       setExecutingPreset(null);
     }, 500);
-  }, [onAddExecutionHistory]);
+  }, [onAddExecutionHistory, onItemUpdated]);
 
   // 处理添加到收藏夹
   const handleAddToFavorite = useCallback(async (e: React.MouseEvent, item: FeedItem, preset: PresetIntegration) => {
@@ -950,6 +961,18 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                 >
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+
+              {/* 下载中标记 */}
+              {item.komgaStatus === 3 && (
+                <div
+                  className="absolute top-2 right-2 p-1 bg-orange-500/90 dark:bg-orange-400/90 rounded-md shadow-lg backdrop-blur-sm"
+                  title="下载中"
+                >
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                 </div>
               )}

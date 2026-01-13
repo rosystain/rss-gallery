@@ -162,9 +162,9 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
     if (!isOpen || !item || !onItemUpdated) return;
 
     // 检查是否需要查询 Komga 状态
-    // 查询条件:状态未知(undefined/0)或不在库中(2),且未查询过,且 URL 属于支持的域名
+    // 查询条件:状态未知(undefined/0)、不在库中(2)或下载中(3),且未查询过,且 URL 属于支持的域名
     const needsQuery =
-      (!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2) &&
+      (!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2 || item.komgaStatus === 3) &&
       !queriedKomgaIdsRef.current.has(item.id) &&
       item.link &&
       (item.link.includes('e-hentai.org') ||
@@ -374,6 +374,17 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
         id: preset.id,
         status: result.success ? 'success' : 'error'
       });
+
+      // 推送成功后，更新 Komga 状态为"下载中"(3)
+      if (result.success && preset.id === 'hentai-assistant') {
+        try {
+          await api.updateItemKomgaStatus(item.id, 3);
+          // 同步更新本地状态
+          onItemUpdated?.(item.id, { komgaStatus: 3 });
+        } catch (e) {
+          console.error('[ItemModal] Failed to update Komga status:', e);
+        }
+      }
 
       // 2秒后清除结果状态
       resultTimerRef.current = setTimeout(() => {
@@ -698,6 +709,14 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             <span>已在 Komga 库中</span>
+                          </div>
+                        )}
+                        {item.komgaStatus === 3 && (
+                          <div className="flex items-center gap-1 text-orange-500 dark:text-orange-400 shrink-0">
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>下载中</span>
                           </div>
                         )}
                       </div>

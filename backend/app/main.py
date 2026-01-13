@@ -254,14 +254,24 @@ async def update_items_komga_status(db: Session, items: list[FeedItem], api_url:
         
         item_result = result.get("results", {}).get(item.link)
         if item_result is not None:
-            # 1 = 已收录, 2 = 未收录
+            # 1 = 已收录, 2 = 未收录, 3 = 下载中
             # Komga API 返回的字段名是 "found"，不是 "status"
-            item.komga_status = 1 if item_result.get("found") else 2
+            if item_result.get("found"):
+                # 已入库，更新为 1
+                item.komga_status = 1
+            elif item.komga_status == 3:
+                # 原状态是"下载中"且仍未入库，保持为 3（继续等待）
+                pass
+            else:
+                # 普通情况，标记为不在库
+                item.komga_status = 2
             item.komga_sync_at = now
             updated_count += 1
         else:
-            # 查询失败或未返回结果，标记为不在库
-            item.komga_status = 2
+            # 查询失败或未返回结果
+            if item.komga_status != 3:
+                # 只有非"下载中"状态才标记为不在库
+                item.komga_status = 2
             item.komga_sync_at = now
     
     if updated_count > 0:
@@ -1073,6 +1083,32 @@ def refresh_item_image(item_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to refresh image: {str(e)}")
+
+
+@app.patch("/api/items/{item_id}/komga-status")
+def update_item_komga_status(
+    item_id: str,
+    status: int = Query(..., ge=0, le=3, description="Komga 状态: 0=未检查, 1=已收录, 2=不在库, 3=下载中"),
+    db: Session = Depends(get_db)
+):
+    """
+    更新条目的 Komga 状态。
+    主要用于前端推送下载成功后，将状态设置为 3（下载中）。
+    """
+    item = db.query(FeedItem).filter(FeedItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    item.komga_status = status
+    item.komga_sync_at = datetime.utcnow()
+    db.commit()
+    
+    return {
+        "success": True,
+        "id": item.id,
+        "komgaStatus": item.komga_status,
+        "komgaSyncAt": item.komga_sync_at.isoformat() if item.komga_sync_at else None
+    }
 
 
 @app.post("/api/items/query-komga")

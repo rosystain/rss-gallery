@@ -34,7 +34,7 @@ export interface FeedItem {
   updatedAt: string;
   isUnread?: boolean;
   isFavorite?: boolean;
-  komgaStatus?: number;  // Komga 库存状态: 0=未检查, 1=已收录, 2=不在库
+  komgaStatus?: number;  // Komga 库存状态: 0=未检查, 1=已收录, 2=不在库, 3=下载中
   komgaSyncAt?: string;  // 上次调用 Komga API 的时间
   feed?: {
     title: string;

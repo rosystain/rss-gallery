@@ -51,7 +51,7 @@ class FeedItem(Base):
     read_at = Column(DateTime)  # 标记已读的时间
     is_favorite = Column(Boolean, default=False)  # 收藏状态
     favorited_at = Column(DateTime)  # 标记收藏的时间
-    komga_status = Column(Integer, default=0)  # Komga 库存状态: 0=未检查, 1=已收录, 2=不在库
+    komga_status = Column(Integer, default=0)  # Komga 库存状态: 0=未检查, 1=已收录, 2=不在库, 3=下载中
     komga_sync_at = Column(DateTime)  # 上次调用 Komga API 的时间
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

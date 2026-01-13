@@ -271,4 +271,17 @@ export const api = {
     });
     return handleResponse(response);
   },
+
+  // 更新 Komga 状态（推送下载后调用）
+  async updateItemKomgaStatus(itemId: string, status: number): Promise<{
+    success: boolean;
+    id: string;
+    komgaStatus: number;
+    komgaSyncAt: string | null;
+  }> {
+    const response = await fetch(`${API_BASE}/items/${itemId}/komga-status?status=${status}`, {
+      method: 'PATCH',
+    });
+    return handleResponse(response);
+  },
 };

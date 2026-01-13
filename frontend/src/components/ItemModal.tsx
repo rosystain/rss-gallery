@@ -376,7 +376,8 @@ export default function ItemModal({ item, isOpen, onClose, onItemUpdated, onAddE
       });
 
       // 推送成功后，更新 Komga 状态为"下载中"(3)
-      if (result.success && preset.id === 'hentai-assistant') {
+      // 只有当状态不是"已收录"(1)时才更新，避免已入库的条目被错误标记
+      if (result.success && preset.id === 'hentai-assistant' && item.komgaStatus !== 1) {
         try {
           await api.updateItemKomgaStatus(item.id, 3);
           // 同步更新本地状态

@@ -5,7 +5,7 @@ import { api } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
-import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent } from './components/IntegrationSettings';
+import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent, isHentaiAssistantCompatible } from './components/IntegrationSettings';
 
 type Theme = 'system' | 'light' | 'dark';
 
@@ -300,7 +300,7 @@ function App() {
     // 因为实际滚动发生在 window 层级，而不是 main 元素）
     const isAtTop = window.scrollY === 0;
     allowPullRef.current = isAtTop;
-    
+
     if (isAtTop) {
       pullStartYRef.current = e.touches[0].clientY;
       setIsPulling(true);
@@ -327,7 +327,7 @@ function App() {
 
     // 只有在仍然在顶部且向下拉时才显示下拉动画
     const isStillAtTop = window.scrollY === 0;
-    
+
     if (isStillAtTop && distance > 0) {
       // 阻尼效果：距离越大阻力越大，最大可拉到 150px
       const dampedDistance = Math.min(distance * 0.5, 150);
@@ -536,11 +536,17 @@ function App() {
         } else if (page === 1) {
           setItems(response.items);
           setHasMore(response.hasMore);
+          // 首次加载后查询 Komga 状态
+          queryKomgaForItems(response.items);
         } else {
           // 翻页加载：去重后追加
           setItems(prev => {
             const existingIds = new Set(prev.map(item => item.id));
             const newItems = response.items.filter(item => !existingIds.has(item.id));
+            // 查询新加载项目的 Komga 状态
+            if (newItems.length > 0) {
+              queryKomgaForItems(newItems);
+            }
             return [...prev, ...newItems];
           });
           setHasMore(response.hasMore);
@@ -563,6 +569,52 @@ function App() {
 
     return () => clearInterval(interval);
   }, [page, selectedFeed, refreshKey, feedUnreadFilters, itemsPerPage, sortBy]);
+
+  // Komga 状态查询：加载数据后立即查询
+  const queryKomgaForItems = async (itemsToCheck: FeedItem[]) => {
+    try {
+      // 检查 Hentai Assistant 是否启用
+      const presets = await api.getPresetIntegrations();
+      const hentaiAssistant = presets.find(p => p.id === 'hentai-assistant');
+
+      if (!hentaiAssistant || !hentaiAssistant.enabled) {
+        return;
+      }
+
+      // 过滤出需要查询的条目：状态 0/2/3，且 URL 属于支持的域名
+      const itemIds = itemsToCheck
+        .filter(item =>
+          (!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2 || item.komgaStatus === 3) &&
+          isHentaiAssistantCompatible(item.link)
+        )
+        .map(item => item.id);
+
+      if (itemIds.length === 0) {
+        return;
+      }
+
+      console.log(`[Komga] Querying ${itemIds.length} items after load...`);
+
+      const result = await api.queryKomgaStatus(itemIds);
+
+      if (result.items && result.items.length > 0) {
+        // 更新本地状态
+        setItems(prev => {
+          const updates = new Map(result.items!.map(item => [item.id, item]));
+          return prev.map(item => {
+            const update = updates.get(item.id);
+            if (update) {
+              return { ...item, komgaStatus: update.komgaStatus, komgaSyncAt: update.komgaSyncAt || undefined };
+            }
+            return item;
+          });
+        });
+        console.log(`[Komga] Updated ${result.items.length} items`);
+      }
+    } catch (error) {
+      console.error('[Komga] Failed to query status:', error);
+    }
+  };
 
   // 批量标记已浏览的 items 为已读
   const batchMarkItemsAsRead = (itemIds: string[]) => {

@@ -210,11 +210,6 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
   const [favoriteResult, setFavoriteResult] = useState<{ id: string; status: 'success' | 'error' } | null>(null); // 收藏夹执行结果
   const resultTimerRef = useRef<NodeJS.Timeout | null>(null); // 结果显示定时器
 
-  // Komga 查询相关状态
-  const [queryingKomgaIds, setQueryingKomgaIds] = useState<Set<string>>(new Set()); // 正在查询或已查询的 item IDs
-  const komgaQueryTimerRef = useRef<NodeJS.Timeout | null>(null); // Komga 查询防抖定时器
-  const [isQueryingKomga, setIsQueryingKomga] = useState(false); // 是否正在查询 Komga
-
   // 加载自定义集成列表
   const loadIntegrations = useCallback(async () => {
     try {
@@ -390,142 +385,10 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     return () => {
       hoverTimerRef.current.forEach(timer => clearTimeout(timer));
       hoverTimerRef.current.clear();
-      if (komgaQueryTimerRef.current) {
-        clearTimeout(komgaQueryTimerRef.current);
-      }
     };
   }, []);
 
-  // Komga 查询：收集需要查询的条目
-  const collectItemsToQueryKomga = useCallback((): string[] => {
-    const itemsToQuery: string[] = [];
-    const debugInfo = { total: 0, needsQuery: 0, compatible: 0, inViewport: 0 };
-
-    // 遍历所有条目，找出需要查询的
-    items.forEach(item => {
-      debugInfo.total++;
-
-      // 查询 komgaStatus = 0/null（未检查）、2（不在库）或 3（下载中）的记录，且 URL 属于支持的域名
-      if ((!item.komgaStatus || item.komgaStatus === 0 || item.komgaStatus === 2 || item.komgaStatus === 3) &&
-        !queryingKomgaIds.has(item.id) &&
-        isHentaiAssistantCompatible(item.link)) {
-        // 检查是否在视口内或附近
-        const element = document.querySelector(`[data-item-id="${item.id}"]`);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          const windowHeight = window.innerHeight;
-          // 视口内 + 下方 2 屏的范围
-          if (rect.top < windowHeight * 3) {
-            debugInfo.inViewport++;
-            itemsToQuery.push(item.id);
-          }
-        }
-      }
-    });
-
-    if (debugInfo.total === 0) {
-      return [];
-    }
-
-    // 最多查询 50 个
-    const result = itemsToQuery.slice(0, 50);
-    return result;
-  }, [items, queryingKomgaIds]);
-
-  // Komga 查询：执行批量查询
-  const batchQueryKomga = useCallback(async (itemIds: string[]) => {
-    if (itemIds.length === 0 || isQueryingKomga) return;
-
-    console.log(`Querying Komga status for ${itemIds.length} items...`);
-    setIsQueryingKomga(true);
-
-    // 标记这些 ID 为正在查询
-    setQueryingKomgaIds(prev => {
-      const newSet = new Set(prev);
-      itemIds.forEach(id => newSet.add(id));
-      return newSet;
-    });
-
-    try {
-      const result = await api.queryKomgaStatus(itemIds);
-      console.log(`Komga query completed: ${result.updated} items updated`);
-
-      // 直接使用后端返回的更新数据
-      if (result.items && result.items.length > 0 && onItemUpdated) {
-        result.items.forEach((item: any) => {
-          onItemUpdated(item.id, {
-            komgaStatus: item.komgaStatus,
-            komgaSyncAt: item.komgaSyncAt
-          });
-        });
-
-        console.log(`[Komga] Updated ${result.items.length} items in local state`);
-      }
-    } catch (error) {
-      console.error('Failed to query Komga status:', error);
-      // 查询失败，移除这些 ID 的标记，允许下次重试
-      setQueryingKomgaIds(prev => {
-        const newSet = new Set(prev);
-        itemIds.forEach(id => newSet.delete(id));
-        return newSet;
-      });
-    } finally {
-      setIsQueryingKomga(false);
-    }
-  }, [isQueryingKomga, onItemUpdated]);
-
-  // Komga 查询：滚动停止后触发
-  const handleScrollForKomga = useCallback(() => {
-    // 清除之前的定时器
-    if (komgaQueryTimerRef.current) {
-      clearTimeout(komgaQueryTimerRef.current);
-    }
-
-    // 2 秒后触发查询（增加防抖时间以优化性能）
-    komgaQueryTimerRef.current = setTimeout(() => {
-      const itemsToQuery = collectItemsToQueryKomga();
-      if (itemsToQuery.length > 0) {
-        batchQueryKomga(itemsToQuery);
-      }
-    }, 2000);
-  }, [collectItemsToQueryKomga, batchQueryKomga]);
-
-  // 监听滚动事件，触发 Komga 查询
-  useEffect(() => {
-    // 检查 Hentai Assistant 是否启用
-    const checkAndQuery = async () => {
-      try {
-        const presets = await api.getPresetIntegrations();
-        const hentaiAssistant = presets.find(p => p.id === 'hentai-assistant');
-
-        // 只有在 Hentai Assistant 启用时才添加滚动监听
-        if (!hentaiAssistant || !hentaiAssistant.enabled) {
-          console.log('[Komga] Hentai Assistant is disabled, skipping scroll listener');
-          return;
-        }
-
-        // 添加滚动监听
-        window.addEventListener('scroll', handleScrollForKomga, { passive: true });
-
-        // 首屏查询
-        const itemsToQuery = collectItemsToQueryKomga();
-        if (itemsToQuery.length > 0) {
-          batchQueryKomga(itemsToQuery);
-        }
-      } catch (error) {
-        console.error('[Komga] Failed to check Hentai Assistant status:', error);
-      }
-    };
-
-    // 延迟 1 秒，等待组件完全渲染
-    const initialTimer = setTimeout(checkAndQuery, 1000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      window.removeEventListener('scroll', handleScrollForKomga);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 只在组件挂载时执行一次
+  // Komga 查询已移至 App.tsx 在数据加载时统一处理
 
   // 处理分享（复制链接）
   const handleShare = useCallback((e: React.MouseEvent, item: FeedItem) => {

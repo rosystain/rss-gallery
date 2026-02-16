@@ -127,15 +127,17 @@ function App() {
   const [editFeedTitle, setEditFeedTitle] = useState('');
   const [editFeedEnabledIntegrations, setEditFeedEnabledIntegrations] = useState<string[] | null>(null);
   const [availableIntegrations, setAvailableIntegrations] = useState<CustomIntegration[]>([]);
-  const [viewedItems, setViewedItems] = useState<Set<string>>(new Set()); // 追踪已浏览的 items
-  const batchMarkTimerRef = useRef<NodeJS.Timeout | null>(null); // 批量标记定时器
-  const pendingMarkItemsRef = useRef<Set<string>>(new Set()); // 追踪待标记的项目（用于避免闭包问题）
+
   const [feedUnreadFilters, setFeedUnreadFilters] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('feedUnreadFilters');
     return saved ? JSON.parse(saved) : {};
   });
   const [autoLoadMore, setAutoLoadMore] = useState(() => {
     const saved = localStorage.getItem('autoLoadMore');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [autoMarkRead, setAutoMarkRead] = useState(() => {
+    const saved = localStorage.getItem('autoMarkRead');
     return saved !== null ? saved === 'true' : true;
   });
   const [itemsPerPage, setItemsPerPage] = useState(() => {
@@ -414,6 +416,11 @@ function App() {
     localStorage.setItem('autoLoadMore', String(autoLoadMore));
   }, [autoLoadMore]);
 
+  // Save auto mark read preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('autoMarkRead', String(autoMarkRead));
+  }, [autoMarkRead]);
+
   // Save items per page preference to localStorage
   useEffect(() => {
     localStorage.setItem('itemsPerPage', String(itemsPerPage));
@@ -616,16 +623,12 @@ function App() {
     }
   };
 
-  // 批量标记已浏览的 items 为已读
+  // 批量标记 items 为已读
   const batchMarkItemsAsRead = (itemIds: string[]) => {
     if (itemIds.length === 0) return;
 
-    console.log(`准备标记 ${itemIds.length} 个浏览过的项目`);
+    console.log(`批量标记 ${itemIds.length} 个项目为已读`);
 
-    // 清除已提交的项目
-    itemIds.forEach(id => pendingMarkItemsRef.current.delete(id));
-
-    // 直接标记这些浏览过的 items
     api.markItemsAsRead(itemIds)
       .then((result) => {
         console.log(`成功标记 ${result.marked_count} 个项目为已读`);
@@ -638,59 +641,10 @@ function App() {
       .catch(err => console.error('Failed to mark items as read:', err));
   };
 
-  // 立即提交所有待标记的项目
-  const flushPendingMarkItems = () => {
-    if (batchMarkTimerRef.current) {
-      clearTimeout(batchMarkTimerRef.current);
-      batchMarkTimerRef.current = null;
-    }
-    const pendingIds = Array.from(pendingMarkItemsRef.current);
-    if (pendingIds.length > 0) {
-      batchMarkItemsAsRead(pendingIds);
-    }
-    // 注意：不要清空 viewedItems，切换 feed 时会重置
-  };
-
-  // 处理单个 item 被浏览完成
-  const handleItemViewed = (itemId: string) => {
-    // 使用 ref 来追踪待标记项目，避免闭包问题
-    pendingMarkItemsRef.current.add(itemId);
-
-    setViewedItems(prev => {
-      const newSet = new Set(prev);
-      newSet.add(itemId);
-      return newSet;
-    });
-
-    // 清除之前的定时器
-    if (batchMarkTimerRef.current) {
-      clearTimeout(batchMarkTimerRef.current);
-    }
-
-    // 延迟 2 秒批量标记，避免频繁 API 调用
-    batchMarkTimerRef.current = setTimeout(() => {
-      const pendingIds = Array.from(pendingMarkItemsRef.current);
-      if (pendingIds.length > 0) {
-        batchMarkItemsAsRead(pendingIds);
-      }
-      // 注意：不要清空 viewedItems，否则会导致 ImageWall 重复检测
-    }, 2000);
-  };
-
   // 处理鼠标悬浮足够长时间后标记已读
   const handleItemHoverRead = (itemId: string) => {
-    // 复用 handleItemViewed 的逻辑
-    handleItemViewed(itemId);
+    batchMarkItemsAsRead([itemId]);
   };
-
-  // 切换 feed 时先提交待标记项目，再重置浏览记录
-  useEffect(() => {
-    // 先提交当前待标记的项目
-    flushPendingMarkItems();
-    // 重置所有记录（切换 feed 时可以安全清空）
-    pendingMarkItemsRef.current = new Set();
-    setViewedItems(new Set());
-  }, [selectedFeed]);
 
   const loadFeeds = async () => {
     try {
@@ -824,6 +778,13 @@ function App() {
   };
 
   const loadMore = () => {
+    // 加载更多之前，批量标记当前已加载的未读项为已读
+    if (autoMarkRead) {
+      const unreadIds = items.filter(i => i.isUnread).map(i => i.id);
+      if (unreadIds.length > 0) {
+        batchMarkItemsAsRead(unreadIds);
+      }
+    }
     setPage(prev => prev + 1);
   };
 
@@ -1045,6 +1006,19 @@ function App() {
                         className="rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
                       />
                       <span>自动加载更多</span>
+                    </label>
+                  </div>
+
+                  {/* 自动标记已读 */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-text cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoMarkRead}
+                        onChange={(e) => setAutoMarkRead(e.target.checked)}
+                        className="rounded border-gray-300 dark:border-dark-border text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>加载时自动标记已读</span>
                     </label>
                   </div>
                 </div>
@@ -1806,8 +1780,6 @@ function App() {
                   items={items}
                   onItemClick={handleItemClick}
                   columnsCount={getCurrentImageWidth()}
-                  onItemViewed={handleItemViewed}
-                  viewedItems={viewedItems}
                   onItemUpdated={handleItemUpdated}
                   onItemHoverRead={handleItemHoverRead}
                   onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}

@@ -78,8 +78,6 @@ interface ImageWallProps {
   items: FeedItem[];
   onItemClick: (item: FeedItem) => void;
   columnsCount?: number;
-  onItemViewed?: (itemId: string) => void; // 当卡片完整浏览后的回调
-  viewedItems?: Set<string>; // 从外部传入的已浏览项目集合
   onItemUpdated?: (itemId: string, updates: Partial<FeedItem>) => void; // 当条目更新时的回调
   onItemHoverRead?: (itemId: string) => void; // 当鼠标悬浮足够长时间后的回调
   onAddExecutionHistory?: (entry: {
@@ -191,9 +189,8 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   );
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemViewed, viewedItems, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger }: ImageWallProps) {
+export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger }: ImageWallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewedItemsRef = useRef<Set<string>>(viewedItems || new Set());
   const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
   const hoverReadItemsRef = useRef<Set<string>>(new Set()); // 已通过悬浮标记为已读的items
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null); // 显示复制成功提示的item
@@ -261,76 +258,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     return getPresetActions(presetIntegrations, item.link);
   }, [presetIntegrations]);
 
-  // 同步外部 viewedItems
-  useEffect(() => {
-    if (viewedItems) {
-      viewedItemsRef.current = viewedItems;
-    }
-  }, [viewedItems]);
 
-  // 滚动追踪逻辑
-  useEffect(() => {
-    if (!onItemViewed) return;
-
-    // 初始化保护期:500ms 内不检查
-    let isInitializing = true;
-    const initTimer = setTimeout(() => {
-      isInitializing = false;
-    }, 500);
-
-    // 检查哪些卡片已被"看过"
-    const checkViewedItems = () => {
-      if (isInitializing) return;
-
-      // 获取当前滚动位置(视口顶部相对于文档的位置)
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      // 水位线:视口顶部位置 + 一点缓冲(用户至少看过视口高度的 20%)
-      const waterline = scrollTop + window.innerHeight * 0.2;
-
-      // 检查所有卡片
-      const cards = document.querySelectorAll('[data-item-id]');
-      cards.forEach((card) => {
-        const itemId = card.getAttribute('data-item-id');
-        if (!itemId) return;
-
-        // 已经标记过的跳过
-        if (viewedItemsRef.current.has(itemId)) return;
-
-        // 获取卡片位置(相对于文档)
-        const rect = card.getBoundingClientRect();
-        const cardBottom = rect.bottom + scrollTop; // 卡片底部相对于文档的位置
-
-        // 如果卡片底部在水位线之上,说明用户已经滚过这张卡片
-        if (cardBottom < waterline) {
-          onItemViewed(itemId);
-        }
-      });
-    };
-
-    // 使用 throttle 的滚动监听(每 200ms 最多执行一次)
-    let lastCheck = 0;
-    const throttledCheck = () => {
-      const now = Date.now();
-      if (now - lastCheck >= 200) {
-        lastCheck = now;
-        checkViewedItems();
-      }
-    };
-
-    // 监听滚动事件
-    window.addEventListener('scroll', throttledCheck, { passive: true });
-
-    // 组件挂载后也检查一次(处理页面已经滚动的情况)
-    const mountCheck = setTimeout(() => {
-      checkViewedItems();
-    }, 600); // 等初始化保护期结束后再检查
-
-    return () => {
-      clearTimeout(initTimer);
-      clearTimeout(mountCheck);
-      window.removeEventListener('scroll', throttledCheck);
-    };
-  }, [onItemViewed]); // 移除 itemIds 依赖,避免频繁重新注册监听器
 
   // 处理图片重试
   const handleImageRetry = useCallback(async (itemId: string): Promise<string | null> => {
@@ -1002,8 +930,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
             {/* Content */}
             <div className="p-4">
-              <h3 className={`font-semibold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'
-                }`}>
+              <h3 className={`font-semibold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'}`}>
                 {item.title}
               </h3>
 
@@ -1028,7 +955,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
                     <span className="truncate">{item.feed.title}</span>
                   </span>
                 )}
-                <span className="flex-shrink-0">•</span>
+                <span className={`flex-shrink-0 transition-colors duration-300 ${item.isUnread ? 'text-green-500' : ''}`}>•</span>
                 <span className="flex-shrink-0">{formatRelativeTime(item.createdAt)}</span>
               </div>
 

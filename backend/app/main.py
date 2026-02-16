@@ -407,7 +407,6 @@ def health_check():
 @app.get("/api/feeds", response_model=list[FeedResponse])
 def get_feeds(db: Session = Depends(get_db)):
     """Get all feeds with item counts and unread counts"""
-    import json
     feeds = db.query(Feed).order_by(Feed.created_at.desc()).all()
     
     result = []
@@ -497,7 +496,6 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
         # Serialize enabled_integrations if provided
         enabled_integrations_json = None
         if feed_data.enabled_integrations is not None:
-            import json
             enabled_integrations_json = json.dumps(feed_data.enabled_integrations)
         
         # Create feed
@@ -836,7 +834,6 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
         
         # Update enabled_integrations if provided
         if feed_data.enabled_integrations is not None:
-            import json
             feed.enabled_integrations = json.dumps(feed_data.enabled_integrations)
         
         db.commit()
@@ -845,7 +842,6 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
         items_count = db.query(FeedItem).filter(FeedItem.feed_id == feed.id).count()
         
         # Parse enabled_integrations from JSON
-        import json
         enabled_integrations = None
         if feed.enabled_integrations:
             try:

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
 import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
-import { api } from './services/api';
+import { api, authApi, AUTH_EXPIRED_EVENT } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
 import ImageWall from './components/ImageWall';
 import ItemModal from './components/ItemModal';
 import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent, isHentaiAssistantCompatible } from './components/IntegrationSettings';
+import LoginScreen from './components/LoginScreen';
 
 type Theme = 'system' | 'light' | 'dark';
 
@@ -41,6 +42,42 @@ function getInitialTheme(): Theme {
 }
 
 function App() {
+  // ── 认证状态 ──
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // 检查认证状态
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { authEnabled: enabled } = await authApi.status();
+        setAuthEnabled(enabled);
+        if (!enabled) {
+          setIsAuthenticated(true);
+        } else {
+          const authed = await authApi.check();
+          setIsAuthenticated(authed);
+        }
+      } catch {
+        // 网络错误，假设不需要认证（允许离线访问 PWA 缓存）
+        setIsAuthenticated(true);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // 监听 401 事件（Cookie 过期）
+  useEffect(() => {
+    const handleExpired = () => {
+      setIsAuthenticated(false);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+  }, []);
+
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   // 边栏模式：'auto' | 'sidebar' | 'topbar'
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'sidebar' | 'topbar'>(() => {
@@ -481,11 +518,14 @@ function App() {
 
   // Load feeds
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadFeeds();
-  }, []);
+  }, [isAuthenticated]);
 
   // Load items
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     // 增加版本号
     fetchVersionRef.current += 1;
     const currentVersion = fetchVersionRef.current;
@@ -575,7 +615,7 @@ function App() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [page, selectedFeed, refreshKey, feedUnreadFilters, itemsPerPage, sortBy]);
+  }, [isAuthenticated, page, selectedFeed, refreshKey, feedUnreadFilters, itemsPerPage, sortBy]);
 
   // Komga 状态查询：加载数据后立即查询
   const queryKomgaForItems = async (itemsToCheck: FeedItem[]) => {
@@ -873,6 +913,16 @@ function App() {
       alert('更新订阅失败，请检查URL是否正确');
     }
   };
+
+  // ── 认证检查中或未认证 → 渲染登录页 ──
+  if (authChecking) {
+    // 检查中显示空白（避免闪烁）
+    return <div className="min-h-screen bg-gray-100 dark:bg-dark-bg transition-colors duration-300" />;
+  }
+
+  if (authEnabled && !isAuthenticated) {
+    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col relative overflow-hidden">

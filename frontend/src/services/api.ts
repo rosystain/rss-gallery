@@ -2,6 +2,28 @@ import type { Feed, FeedItem, ItemsResponse, CustomIntegration, PresetIntegratio
 
 const API_BASE = '/api';
 
+// 401 事件：认证失效时触发
+export const AUTH_EXPIRED_EVENT = 'auth:expired';
+
+function dispatchAuthExpired() {
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+}
+
+// 统一的 fetch 封装，自动携带 Cookie
+async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'include',
+  });
+
+  // 401 且非 auth 接口 → 触发全局登出
+  if (response.status === 401 && !url.includes('/api/auth/')) {
+    dispatchAuthExpired();
+  }
+
+  return response;
+}
+
 // 统一的响应处理
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -11,10 +33,53 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+// ── 认证 API ──────────────────────────────────────────
+
+export const authApi = {
+  /** 返回认证是否启用 */
+  async status(): Promise<{ authEnabled: boolean }> {
+    const response = await apiFetch(`${API_BASE}/auth/status`);
+    return handleResponse(response);
+  },
+
+  /** 检查当前是否已认证 */
+  async check(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE}/auth/check`, {
+        credentials: 'include',
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  /** 登录 */
+  async login(passkey: string): Promise<boolean> {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ passkey }),
+    });
+    return response.ok;
+  },
+
+  /** 登出 */
+  async logout(): Promise<void> {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  },
+};
+
+// ── 业务 API ──────────────────────────────────────────
+
 export const api = {
   // Feeds
   async getFeeds(): Promise<Feed[]> {
-    const response = await fetch(`${API_BASE}/feeds`);
+    const response = await apiFetch(`${API_BASE}/feeds`);
     return handleResponse<Feed[]>(response);
   },
 
@@ -23,7 +88,7 @@ export const api = {
     if (category !== undefined) payload.category = category;
     if (enabledIntegrations !== undefined) payload.enabled_integrations = enabledIntegrations;
 
-    const response = await fetch(`${API_BASE}/feeds`, {
+    const response = await apiFetch(`${API_BASE}/feeds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -32,7 +97,7 @@ export const api = {
   },
 
   async deleteFeed(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/feeds/${id}`, {
+    const response = await apiFetch(`${API_BASE}/feeds/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -49,7 +114,7 @@ export const api = {
     if (data.category !== undefined) payload.category = data.category;
     if (data.enabledIntegrations !== undefined) payload.enabled_integrations = data.enabledIntegrations;
 
-    const response = await fetch(`${API_BASE}/feeds/${id}`, {
+    const response = await apiFetch(`${API_BASE}/feeds/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -58,7 +123,7 @@ export const api = {
   },
 
   async fetchFeed(id: string): Promise<{ success: boolean; newItems: number }> {
-    const response = await fetch(`${API_BASE}/feeds/${id}/fetch`, {
+    const response = await apiFetch(`${API_BASE}/feeds/${id}/fetch`, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; newItems: number }>(response);
@@ -68,14 +133,14 @@ export const api = {
     const url = latestItemTime
       ? `${API_BASE}/feeds/${id}/mark-read?latest_item_time=${encodeURIComponent(latestItemTime)}`
       : `${API_BASE}/feeds/${id}/mark-read`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; lastViewedAt: string }>(response);
   },
 
   async markItemsAsRead(itemIds: string[]): Promise<{ success: boolean; marked_count: number }> {
-    const response = await fetch(`${API_BASE}/items/mark-read`, {
+    const response = await apiFetch(`${API_BASE}/items/mark-read`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itemIds),
@@ -84,14 +149,14 @@ export const api = {
   },
 
   async markItemAsRead(itemId: string): Promise<{ success: boolean }> {
-    const response = await fetch(`${API_BASE}/items/${itemId}/mark-read`, {
+    const response = await apiFetch(`${API_BASE}/items/${itemId}/mark-read`, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean }>(response);
   },
 
   async markAllFeedAsRead(feedId: string): Promise<{ success: boolean; marked_count: number }> {
-    const response = await fetch(`${API_BASE}/feeds/${feedId}/mark-all-read`, {
+    const response = await apiFetch(`${API_BASE}/feeds/${feedId}/mark-all-read`, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; marked_count: number }>(response);
@@ -116,17 +181,17 @@ export const api = {
     if (params?.unreadOnly) queryParams.set('unread_only', 'true');
     if (params?.sortBy) queryParams.set('sort_by', params.sortBy);
 
-    const response = await fetch(`${API_BASE}/items?${queryParams}`);
+    const response = await apiFetch(`${API_BASE}/items?${queryParams}`);
     return handleResponse<ItemsResponse>(response);
   },
 
   async getItem(id: string): Promise<FeedItem> {
-    const response = await fetch(`${API_BASE}/items/${id}`);
+    const response = await apiFetch(`${API_BASE}/items/${id}`);
     return handleResponse<FeedItem>(response);
   },
 
   async refreshItemImage(itemId: string): Promise<{ success: boolean; thumbnail_image: string }> {
-    const response = await fetch(`${API_BASE}/items/${itemId}/refresh-image`, {
+    const response = await apiFetch(`${API_BASE}/items/${itemId}/refresh-image`, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; thumbnail_image: string }>(response);
@@ -134,7 +199,7 @@ export const api = {
 
   // Favorites
   async toggleFavorite(itemId: string): Promise<{ success: boolean; is_favorite: boolean }> {
-    const response = await fetch(`${API_BASE}/items/${itemId}/favorite`, {
+    const response = await apiFetch(`${API_BASE}/items/${itemId}/favorite`, {
       method: 'POST',
     });
     return handleResponse<{ success: boolean; is_favorite: boolean }>(response);
@@ -150,18 +215,18 @@ export const api = {
     if (params?.limit) queryParams.set('limit', params.limit.toString());
     if (params?.sortBy) queryParams.set('sort_by', params.sortBy);
 
-    const response = await fetch(`${API_BASE}/items/favorites?${queryParams}`);
+    const response = await apiFetch(`${API_BASE}/items/favorites?${queryParams}`);
     return handleResponse<ItemsResponse>(response);
   },
 
   // Integrations
   async getIntegrations(): Promise<CustomIntegration[]> {
-    const response = await fetch(`${API_BASE}/integrations`);
+    const response = await apiFetch(`${API_BASE}/integrations`);
     return handleResponse<CustomIntegration[]>(response);
   },
 
   async createIntegration(data: Omit<CustomIntegration, 'id' | 'createdAt' | 'updatedAt'>): Promise<CustomIntegration> {
-    const response = await fetch(`${API_BASE}/integrations`, {
+    const response = await apiFetch(`${API_BASE}/integrations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -189,7 +254,7 @@ export const api = {
     if (data.webhookBody !== undefined) payload.webhook_body = data.webhookBody;
     if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
 
-    const response = await fetch(`${API_BASE}/integrations/${id}`, {
+    const response = await apiFetch(`${API_BASE}/integrations/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -198,7 +263,7 @@ export const api = {
   },
 
   async deleteIntegration(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/integrations/${id}`, {
+    const response = await apiFetch(`${API_BASE}/integrations/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -209,12 +274,12 @@ export const api = {
 
   // Preset Integrations
   async getPresetIntegrations(): Promise<PresetIntegration[]> {
-    const response = await fetch(`${API_BASE}/preset-integrations`);
+    const response = await apiFetch(`${API_BASE}/preset-integrations`);
     return handleResponse<PresetIntegration[]>(response);
   },
 
   async getPresetIntegration(id: string): Promise<PresetIntegration> {
-    const response = await fetch(`${API_BASE}/preset-integrations/${id}`);
+    const response = await apiFetch(`${API_BASE}/preset-integrations/${id}`);
     return handleResponse<PresetIntegration>(response);
   },
 
@@ -226,7 +291,7 @@ export const api = {
     if (data.defaultFavcat !== undefined) payload.default_favcat = data.defaultFavcat;
     if (data.defaultNote !== undefined) payload.default_note = data.defaultNote;
 
-    const response = await fetch(`${API_BASE}/preset-integrations/${id}`, {
+    const response = await apiFetch(`${API_BASE}/preset-integrations/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -241,7 +306,7 @@ export const api = {
     body?: object;
     headers?: Record<string, string>;
   }): Promise<unknown> {
-    const response = await fetch(`${API_BASE}/proxy`, {
+    const response = await apiFetch(`${API_BASE}/proxy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -264,7 +329,7 @@ export const api = {
       komgaSyncAt: string | null;
     }>;
   }> {
-    const response = await fetch(`${API_BASE}/items/query-komga`, {
+    const response = await apiFetch(`${API_BASE}/items/query-komga`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itemIds),
@@ -279,7 +344,7 @@ export const api = {
     komgaStatus: number;
     komgaSyncAt: string | null;
   }> {
-    const response = await fetch(`${API_BASE}/items/${itemId}/komga-status?status=${status}`, {
+    const response = await apiFetch(`${API_BASE}/items/${itemId}/komga-status?status=${status}`, {
       method: 'PATCH',
     });
     return handleResponse(response);

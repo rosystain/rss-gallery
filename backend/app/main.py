@@ -13,6 +13,7 @@ from app.database import get_db, init_db, Feed, FeedItem, FeedReadStatus, Integr
 from app.schemas import FeedCreate, FeedUpdate, FeedResponse, FeedItemResponse, FeedBriefResponse, ItemsListResponse, IntegrationCreate, IntegrationUpdate, IntegrationResponse, PresetIntegrationUpdate, PresetIntegrationResponse
 from app.rss_parser import parse_rss_feed, download_and_process_image
 from app.favicon_fetcher import get_favicon_url
+from app.auth import auth_router, auth_middleware
 
 # Hentai Assistant 支持的域名列表（统一配置）
 HENTAI_ASSISTANT_DOMAINS = [
@@ -48,6 +49,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Auth middleware（在 CORS 之后添加，确保 Cookie 跨域正常）
+app.middleware("http")(auth_middleware)
+
+# Auth routes
+app.include_router(auth_router)
 
 # Static files
 DATA_DIR = os.getenv("DATA_DIR", "./data")

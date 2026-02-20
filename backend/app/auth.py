@@ -20,14 +20,14 @@ AUTH_PASSKEY = os.getenv("AUTH_PASSKEY", "").strip()
 COOKIE_NAME = "rss_gallery_session"
 COOKIE_MAX_AGE = 90 * 24 * 60 * 60  # 90 天（秒）
 
-# 白名单路径前缀（无需认证）
-AUTH_WHITELIST = [
-    "/health",
+# 需要认证的路径前缀（只保护 API 数据接口）
+AUTH_PROTECTED_PREFIXES = [
+    "/api/",
+]
+
+# 即使在保护范围内也免认证的路径
+AUTH_EXEMPT_PREFIXES = [
     "/api/auth/",
-    "/uploads/",
-    "/docs",
-    "/openapi.json",
-    "/redoc",
 ]
 
 auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -155,20 +155,25 @@ def auth_check(request: Request):
 
 # ── 中间件 ────────────────────────────────────────────
 
-def is_path_whitelisted(path: str) -> bool:
-    """检查路径是否在白名单中"""
-    for prefix in AUTH_WHITELIST:
-        if path.startswith(prefix):
-            return True
-    return False
+def _is_path_protected(path: str) -> bool:
+    """检查路径是否需要认证保护"""
+    # 先检查是否在保护范围内
+    is_protected = any(path.startswith(prefix) for prefix in AUTH_PROTECTED_PREFIXES)
+    if not is_protected:
+        return False
+
+    # 再检查是否在豁免列表中
+    is_exempt = any(path.startswith(prefix) for prefix in AUTH_EXEMPT_PREFIXES)
+    return not is_exempt
 
 
 async def auth_middleware(request: Request, call_next):
     """
     认证中间件：
     - 认证未启用 → 放行
-    - 白名单路径 → 放行
-    - 有有效 Cookie → 放行 + 滑动续期
+    - 非 API 路径 → 放行（前端静态文件、uploads 等）
+    - API 豁免路径（/api/auth/*）→ 放行
+    - API 路径且有有效 Cookie → 放行 + 滑动续期
     - 否则 → 401
     """
     if not is_auth_enabled():
@@ -176,7 +181,7 @@ async def auth_middleware(request: Request, call_next):
 
     path = request.url.path
 
-    if is_path_whitelisted(path):
+    if not _is_path_protected(path):
         return await call_next(request)
 
     # 验证 Cookie

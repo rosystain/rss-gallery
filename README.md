@@ -60,6 +60,7 @@ docker run -v /path/to/your/config:/app/backend/data -p 5002:5002 ghcr.io/rosyst
 | `RSS_REQUEST_TIMEOUT` | `60` | RSS 请求超时时间（秒） |
 | `RSS_MAX_RETRIES` | `2` | RSS 请求失败重试次数 |
 | `RSS_RETRY_DELAY` | `3` | RSS 请求重试间隔（秒） |
+| `AUTH_PASSKEY` | `null` | 登录认证 Passkey，不设置则不启用登录验证 |
 
 ### Docker 中使用环境变量
 

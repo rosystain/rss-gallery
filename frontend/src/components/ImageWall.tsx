@@ -4,6 +4,15 @@ import type { FeedItem, CustomIntegration, PresetIntegration } from '../types';
 import { api } from '../services/api';
 import { getCustomIntegrationsAsync, executeIntegration, IntegrationIconComponent, getPresetActions, executePresetAction, isHentaiAssistantFavoriteCompatible } from './IntegrationSettings';
 
+// 卡片尺寸五档定义
+export const CARD_SIZE_TIERS = {
+  1: { label: '小', minWidth: 160 },
+  2: { label: '中', minWidth: 220 },
+  3: { label: '大', minWidth: 300 },
+  4: { label: '更大', minWidth: 400 },
+} as const;
+export type CardSizeTier = keyof typeof CARD_SIZE_TIERS;
+
 // 悬浮标记已读的延迟时间（毫秒）
 const HOVER_READ_DELAY = 1500;
 
@@ -77,7 +86,7 @@ function formatRelativeTime(dateString: string): string {
 interface ImageWallProps {
   items: FeedItem[];
   onItemClick: (item: FeedItem) => void;
-  columnsCount?: number;
+  cardSizeTier?: CardSizeTier;
   onItemUpdated?: (itemId: string, updates: Partial<FeedItem>) => void; // 当条目更新时的回调
   onItemHoverRead?: (itemId: string) => void; // 当鼠标悬浮足够长时间后的回调
   onAddExecutionHistory?: (entry: {
@@ -189,7 +198,7 @@ function ImageCard({ item, onRetry }: { item: FeedItem; onRetry: (itemId: string
   );
 }
 
-export default function ImageWall({ items, onItemClick, columnsCount = 5, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger }: ImageWallProps) {
+export default function ImageWall({ items, onItemClick, cardSizeTier = 3, onItemUpdated, onItemHoverRead, onAddExecutionHistory, refreshIntegrationsTrigger }: ImageWallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // 存储每个item的悬浮定时器
   const hoverReadItemsRef = useRef<Set<string>>(new Set()); // 已通过悬浮标记为已读的items
@@ -635,15 +644,20 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
     }
   }, []);
 
-  // 1: 1 column (largest), 5: 5 columns (medium/default), 10: 10 columns (smallest)
-  const breakpointColumns = {
-    default: columnsCount,
-    1536: Math.max(1, columnsCount - 1),
-    1280: Math.max(1, columnsCount - 1),
-    1024: Math.max(1, columnsCount - 2),
-    768: Math.max(1, columnsCount - 3),
-    640: 1,
-  };
+  // 基于卡片最小宽度动态计算列数
+  const [dynamicColumns, setDynamicColumns] = useState(3);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0].contentRect.width;
+      const tierKey = (cardSizeTier >= 1 && cardSizeTier <= 4 ? cardSizeTier : 2) as CardSizeTier;
+      const minW = CARD_SIZE_TIERS[tierKey].minWidth;
+      setDynamicColumns(Math.max(1, Math.floor(width / minW)));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [cardSizeTier]);
 
   return (
     <div ref={containerRef}>
@@ -728,7 +742,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
       )}
 
       <Masonry
-        breakpointCols={breakpointColumns}
+        breakpointCols={dynamicColumns}
         className="flex -ml-3 w-auto"
         columnClassName="pl-3 bg-clip-padding"
       >
@@ -930,7 +944,7 @@ export default function ImageWall({ items, onItemClick, columnsCount = 5, onItem
 
             {/* Content */}
             <div className="p-4">
-              <h3 className={`font-semibold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'}`}>
+              <h3 className={`text-sm font-bold line-clamp-2 mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ${item.isUnread ? 'text-gray-900 dark:text-dark-text' : 'text-[#afafaf] dark:text-neutral-500'}`}>
                 {item.title}
               </h3>
 

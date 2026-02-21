@@ -3,7 +3,7 @@ import { Menu } from '@headlessui/react';
 import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
 import { api, authApi, AUTH_EXPIRED_EVENT } from './services/api';
 import type { FeedItem, Feed, CustomIntegration } from './types';
-import ImageWall from './components/ImageWall';
+import ImageWall, { CARD_SIZE_TIERS, type CardSizeTier } from './components/ImageWall';
 import ItemModal from './components/ItemModal';
 import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent, isHentaiAssistantCompatible } from './components/IntegrationSettings';
 import LoginScreen from './components/LoginScreen';
@@ -149,13 +149,29 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
-  const [imageWidth, setImageWidth] = useState(() => {
+  const [imageWidth, setImageWidth] = useState<number>(() => {
     const saved = localStorage.getItem('imageWidth');
-    return saved ? parseInt(saved) : 5; // Default to medium (5 columns)
+    if (saved) {
+      const v = parseInt(saved);
+      // 兑容旧版 1-10 范围：映射到 1-4
+      if (v > 4) return Math.min(4, Math.round(v / 2.5));
+      return Math.max(1, Math.min(4, v));
+    }
+    return 2; // 默认 中 档
   });
   const [feedImageWidths, setFeedImageWidths] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('feedImageWidths');
-    return saved ? JSON.parse(saved) : {};
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 兑容旧版：将超过 4 的值映射到 1-4
+      const migrated: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        const n = v as number;
+        migrated[k] = n > 4 ? Math.min(4, Math.round(n / 2.5)) : Math.max(1, Math.min(4, n));
+      }
+      return migrated;
+    }
+    return {};
   });
   const [showWidthSlider, setShowWidthSlider] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -961,24 +977,11 @@ function App() {
 
               {showWidthSlider && (
                 <div className="absolute right-0 mt-2 p-4 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-dark-border z-50 min-w-[280px]">
-                  {/* 图片大小 */}
+                  {/* 卡片尺寸 */}
                   <div className="mb-4">
-                    <div className="text-xs font-medium text-gray-700 dark:text-dark-text mb-2">图片大小</div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">大</span>
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={getCurrentImageWidth()}
-                        onChange={(e) => setCurrentImageWidth(parseInt(e.target.value))}
-                        className="flex-1 h-1.5 bg-gray-300 dark:bg-dark-border rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      />
-                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap">小</span>
-                    </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600 dark:text-dark-text">{getCurrentImageWidth()} 列</span>
+                        <span className="text-xs font-medium text-gray-700 dark:text-dark-text">卡片尺寸</span>
                         <span className="text-xs text-gray-400 dark:text-dark-text-secondary">
                           {selectedFeed ? (feedImageWidths[selectedFeed] !== undefined ? '当前订阅' : '跟随全局') : '全局默认'}
                         </span>
@@ -992,6 +995,20 @@ function App() {
                           重置
                         </button>
                       )}
+                    </div>
+                    <div className="flex gap-1">
+                      {([1, 2, 3, 4] as CardSizeTier[]).map(tier => (
+                        <button
+                          key={tier}
+                          onClick={() => setCurrentImageWidth(tier)}
+                          className={`flex-1 px-2 py-1.5 text-xs font-medium rounded transition ${getCurrentImageWidth() === tier
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-dark-text-secondary hover:bg-gray-200 dark:hover:bg-dark-border'
+                            }`}
+                        >
+                          {CARD_SIZE_TIERS[tier].label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -1829,7 +1846,7 @@ function App() {
                 <ImageWall
                   items={items}
                   onItemClick={handleItemClick}
-                  columnsCount={getCurrentImageWidth()}
+                  cardSizeTier={getCurrentImageWidth() as CardSizeTier}
                   onItemUpdated={handleItemUpdated}
                   onItemHoverRead={handleItemHoverRead}
                   onAddExecutionHistory={(entry) => setExecutionHistory(prev => [entry, ...prev].slice(0, 50))}

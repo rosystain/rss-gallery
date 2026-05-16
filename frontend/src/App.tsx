@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu } from '@headlessui/react';
 import { Star, PanelLeft, Sparkles, PanelTop, Sun, Moon, SunMoon, LayoutGrid, Plus } from 'lucide-react';
 import { api, authApi, AUTH_EXPIRED_EVENT } from './services/api';
-import type { FeedItem, Feed, CustomIntegration } from './types';
+import type { FeedItem, Feed, CustomIntegration, ClickAction } from './types';
 import ImageWall, { CARD_SIZE_TIERS, type CardSizeTier } from './components/ImageWall';
 import ItemModal from './components/ItemModal';
 import IntegrationSettings, { getCustomIntegrationsAsync, IntegrationIconComponent, isHentaiAssistantCompatible } from './components/IntegrationSettings';
@@ -179,6 +179,7 @@ function App() {
   const [editFeedUrl, setEditFeedUrl] = useState('');
   const [editFeedTitle, setEditFeedTitle] = useState('');
   const [editFeedEnabledIntegrations, setEditFeedEnabledIntegrations] = useState<string[] | null>(null);
+  const [editFeedClickAction, setEditFeedClickAction] = useState<ClickAction>('modal');
   const [availableIntegrations, setAvailableIntegrations] = useState<CustomIntegration[]>([]);
 
   const [feedUnreadFilters, setFeedUnreadFilters] = useState<Record<string, boolean>>(() => {
@@ -724,8 +725,17 @@ function App() {
   };
 
   const handleItemClick = (item: FeedItem) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
+    // 根据 feed 的 clickAction 设置决定点击行为
+    const clickAction = item.feed?.clickAction || 'modal';
+
+    if (clickAction === 'link' && item.link) {
+      // 直接在新标签页打开链接
+      window.open(item.link, '_blank', 'noopener,noreferrer');
+    } else {
+      // 默认行为：打开详情弹窗
+      setSelectedItem(item);
+      setIsModalOpen(true);
+    }
 
     // 点击查看时标记为已读（支持全部视图和单个feed视图）
     if (item.isUnread) {
@@ -896,6 +906,7 @@ function App() {
     setEditFeedUrl(feed.url);
     setEditFeedTitle(feed.title);
     setEditFeedEnabledIntegrations(feed.enabledIntegrations ?? []);
+    setEditFeedClickAction(feed.clickAction || 'modal');
 
     // 加载可用的集成列表
     try {
@@ -915,12 +926,14 @@ function App() {
       await api.updateFeed(editingFeed.id, {
         title: editFeedTitle,
         url: editFeedUrl,
-        enabledIntegrations: editFeedEnabledIntegrations
+        enabledIntegrations: editFeedEnabledIntegrations,
+        clickAction: editFeedClickAction,
       });
       setEditingFeed(null);
       setEditFeedUrl('');
       setEditFeedTitle('');
       setEditFeedEnabledIntegrations(null);
+      setEditFeedClickAction('modal');
       setAvailableIntegrations([]);
       await loadFeeds();
       triggerRefresh();
@@ -1763,12 +1776,54 @@ function App() {
                     </div>
                   )}
 
+                  {/* 卡片点击行为设置 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                      卡片点击行为
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-dark-text-secondary mb-2">
+                      设置点击此订阅的卡片时执行的操作
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditFeedClickAction('modal')}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition ${
+                          editFeedClickAction === 'modal'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : 'border-gray-300 dark:border-dark-border text-gray-600 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-hover'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6M12 9v6" />
+                        </svg>
+                        详情弹窗
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditFeedClickAction('link')}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition ${
+                          editFeedClickAction === 'link'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : 'border-gray-300 dark:border-dark-border text-gray-600 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-hover'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        直接跳转
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex gap-2 justify-end">
                     <button
                       type="button"
                       onClick={() => {
                         setEditingFeed(null);
                         setEditFeedEnabledIntegrations(null);
+                        setEditFeedClickAction('modal');
                         setAvailableIntegrations([]);
                       }}
                       className="px-4 py-2 text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition"

@@ -11,12 +11,16 @@ export interface Feed {
   lastFetchError?: string;  // 上次抓取失败的错误信息
   isActive: boolean;
   enabledIntegrations?: string[] | null;  // 启用的集成 ID 列表，null 表示全部启用
+  clickAction?: ClickAction;  // 卡片点击行为
   createdAt: string;
   updatedAt: string;
   itemsCount?: number;
   unreadCount?: number;
   warning?: string;  // 订阅存在问题时的警告信息
 }
+
+// 卡片点击行为类型
+export type ClickAction = 'modal' | 'link';
 
 export interface FeedItem {
   id: string;
@@ -41,6 +45,7 @@ export interface FeedItem {
     category?: string;
     favicon?: string;
     enabledIntegrations?: string[] | null;  // 该 feed 启用的集成 ID 列表
+    clickAction?: ClickAction;  // 卡片点击行为
   };
 }
 

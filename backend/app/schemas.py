@@ -17,6 +17,7 @@ class FeedUpdate(BaseModel):
     url: Optional[str] = None
     category: Optional[str] = None
     enabled_integrations: Optional[List[str]] = None  # None 表示不修改，空列表表示禁用所有
+    click_action: Optional[str] = None  # 卡片点击行为: 'modal' 或 'link'
 
 
 class FeedBriefResponse(BaseModel):
@@ -25,6 +26,7 @@ class FeedBriefResponse(BaseModel):
     category: Optional[str] = None
     favicon: Optional[str] = None
     enabled_integrations: Optional[List[str]] = None  # 该 feed 启用的集成 ID 列表
+    click_action: Optional[str] = None  # 卡片点击行为: 'modal' 或 'link'
     
     class Config:
         from_attributes = True
@@ -94,6 +96,7 @@ class FeedResponse(BaseModel):
     unread_count: Optional[int] = None
     warning: Optional[str] = None  # 订阅存在问题时的警告信息
     enabled_integrations: Optional[List[str]] = None  # 启用的集成ID列表，None表示全部启用
+    click_action: Optional[str] = None  # 卡片点击行为: 'modal' 或 'link'
 
     class Config:
         from_attributes = True

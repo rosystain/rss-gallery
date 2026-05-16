@@ -106,13 +106,14 @@ export const api = {
     }
   },
 
-  async updateFeed(id: string, data: { title?: string; url?: string; category?: string; enabledIntegrations?: string[] | null }): Promise<Feed> {
-    // Convert enabledIntegrations to snake_case for backend
+  async updateFeed(id: string, data: { title?: string; url?: string; category?: string; enabledIntegrations?: string[] | null; clickAction?: string }): Promise<Feed> {
+    // Convert camelCase to snake_case for backend
     const payload: Record<string, unknown> = {};
     if (data.title !== undefined) payload.title = data.title;
     if (data.url !== undefined) payload.url = data.url;
     if (data.category !== undefined) payload.category = data.category;
     if (data.enabledIntegrations !== undefined) payload.enabled_integrations = data.enabledIntegrations;
+    if (data.clickAction !== undefined) payload.click_action = data.clickAction;
 
     const response = await apiFetch(`${API_BASE}/feeds/${id}`, {
       method: 'PUT',

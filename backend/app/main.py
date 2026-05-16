@@ -450,6 +450,7 @@ def get_feeds(db: Session = Depends(get_db)):
             "items_count": items_count,
             "unread_count": unread_count,
             "enabled_integrations": enabled_integrations,
+            "click_action": feed.click_action or 'modal',
         }
         result.append(FeedResponse(**feed_dict))
     
@@ -570,6 +571,7 @@ def create_feed(feed_data: FeedCreate, db: Session = Depends(get_db)):
             items_count=len(entries),
             warning=warning_message,
             enabled_integrations=response_enabled_integrations,
+            click_action=feed.click_action or 'modal',
         )
         
     except Exception as e:
@@ -775,6 +777,7 @@ def get_favorite_items(
                 category=item.feed.category,
                 favicon=item.feed.favicon,
                 enabled_integrations=feed_enabled_integrations,
+                click_action=item.feed.click_action or 'modal',
             )
         
         item_dict = {
@@ -843,6 +846,11 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
         if feed_data.enabled_integrations is not None:
             feed.enabled_integrations = json.dumps(feed_data.enabled_integrations)
         
+        # Update click_action if provided
+        if feed_data.click_action is not None:
+            if feed_data.click_action in ('modal', 'link'):
+                feed.click_action = feed_data.click_action
+        
         db.commit()
         db.refresh(feed)
         
@@ -870,6 +878,7 @@ def update_feed(feed_id: str, feed_data: FeedUpdate, db: Session = Depends(get_d
             created_at=feed.created_at,
             items_count=items_count,
             enabled_integrations=enabled_integrations,
+            click_action=feed.click_action or 'modal',
         )
         
     except Exception as e:
@@ -1001,6 +1010,7 @@ def get_items(
                 category=item.feed.category,
                 favicon=item.feed.favicon,
                 enabled_integrations=feed_enabled_integrations,
+                click_action=item.feed.click_action or 'modal',
             )
         
         item_dict = {

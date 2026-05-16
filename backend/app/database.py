@@ -26,6 +26,7 @@ class Feed(Base):
     last_fetch_error = Column(String)  # 上次抓取失败的错误信息，成功时为 None
     is_active = Column(Boolean, default=True)
     enabled_integrations = Column(Text)  # JSON 数组，存储启用的集成 ID，null 表示全部启用
+    click_action = Column(String, default='modal')  # 卡片点击行为: 'modal'=打开详情弹窗, 'link'=直接跳转URL
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
